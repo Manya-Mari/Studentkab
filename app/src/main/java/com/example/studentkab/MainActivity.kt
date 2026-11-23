@@ -92,29 +92,36 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(20.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            "Личный кабинет успеваемости",
+                            "Личный кабинет",
                             style = MaterialTheme.typography.headlineSmall
                         )
                         Text(
+                            "Успеваемость студента",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
                             "Спринт 2 · Дисциплины и оценки",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
 
-                        Row(
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text("Дисциплины", style = MaterialTheme.typography.titleLarge)
-                            Button(onClick = {
-                                editingDiscipline = null
-                                showDisciplineDialog = true
-                            }) {
-                                Text("Добавить")
+                            Button(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = {
+                                    editingDiscipline = null
+                                    showDisciplineDialog = true
+                                }
+                            ) {
+                                Text("Добавить дисциплину")
                             }
                         }
 
@@ -142,20 +149,30 @@ class MainActivity : ComponentActivity() {
                                 ) {
                                     Text(discipline.name, style = MaterialTheme.typography.titleMedium)
                                     Text(discipline.teacherName?.takeIf { it.isNotBlank() } ?: "Преподаватель не указан")
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        TextButton(onClick = {
-                                            editingDiscipline = discipline
-                                            showDisciplineDialog = true
-                                        }) { Text("Изменить") }
-                                        TextButton(onClick = {
-                                            deletingDiscipline = discipline
-                                        }) { Text("Удалить") }
-                                        Button(onClick = {
-                                            selectedDiscipline = discipline
-                                            editingGrade = null
-                                            errorMessage = null
-                                            showGradeDialog = true
-                                        }) { Text("Добавить оценку") }
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            onClick = {
+                                                editingDiscipline = discipline
+                                                showDisciplineDialog = true
+                                            }
+                                        ) { Text("Изменить дисциплину") }
+                                        OutlinedButton(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            onClick = { deletingDiscipline = discipline }
+                                        ) { Text("Удалить дисциплину") }
+                                        Button(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            onClick = {
+                                                selectedDiscipline = discipline
+                                                editingGrade = null
+                                                errorMessage = null
+                                                showGradeDialog = true
+                                            }
+                                        ) { Text("Добавить оценку") }
                                     }
                                 }
                             }
@@ -163,15 +180,25 @@ class MainActivity : ComponentActivity() {
 
                         selectedDiscipline?.let { discipline ->
                             Spacer(Modifier.height(4.dp))
-                            Row(
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("Оценки: ${discipline.name}", style = MaterialTheme.typography.titleLarge)
-                                Button(onClick = {
-                                    editingGrade = null
-                                    showGradeDialog = true
-                                }) { Text("Добавить") }
+                                Text(
+                                    "Оценки",
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                                Text(
+                                    discipline.name,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Button(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        editingGrade = null
+                                        showGradeDialog = true
+                                    }
+                                ) { Text("Добавить оценку") }
                             }
 
                             if (grades.isEmpty()) {
