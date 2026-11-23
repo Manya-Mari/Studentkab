@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="8dp">
+
+        <EditText
+            android:id="@+id/inputGradeValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Оценка (2–5)"
+            android:inputType="number"
+            android:singleLine="true" />
+
+        <EditText
+            android:id="@+id/inputGradeDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Дата (ГГГГ-ММ-ДД)"
+            android:inputType="date"
+            android:singleLine="true" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Формат: 2026-11-15"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <EditText
+            android:id="@+id/inputWorkType"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Тип работы"
+            android:inputType="textCapSentences"
+            android:singleLine="true" />
+
+        <EditText
+            android:id="@+id/inputGradeComment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="top"
+            android:hint="Комментарий"
+            android:inputType="textCapSentences|textMultiLine"
+            android:minLines="2" />
+    </LinearLayout>
+</ScrollView>
