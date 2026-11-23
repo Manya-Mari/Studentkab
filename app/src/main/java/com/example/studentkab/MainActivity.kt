@@ -150,6 +150,12 @@ class MainActivity : ComponentActivity() {
                                         TextButton(onClick = {
                                             deletingDiscipline = discipline
                                         }) { Text("Удалить") }
+                                        Button(onClick = {
+                                            selectedDiscipline = discipline
+                                            editingGrade = null
+                                            errorMessage = null
+                                            showGradeDialog = true
+                                        }) { Text("Добавить оценку") }
                                     }
                                 }
                             }
