@@ -7,9 +7,21 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="action_edit">#2E7D32</color>      <!-- зелёный: изменить -->
+
+    <!-- Цвета действий из обновлённого дизайна -->
+    <color name="action_edit">#2E7D32</color>
     <color name="action_edit_container">#E8F5E9</color>
-    <color name="action_delete">#C62828</color>    <!-- красный: удалить -->
+    <color name="action_delete">#C62828</color>
     <color name="action_delete_container">#FFEBEE</color>
-    <color name="action_add">#1565C0</color>       <!-- синий: добавить -->
+    <color name="action_add">#1565C0</color>
+
+    <!-- Поверхности и текст -->
+    <color name="screen_background">#F5F6FA</color>
+    <color name="card_surface">#FFFFFFFF</color>
+    <color name="card_stroke">#E2E5EC</color>
+    <color name="selected_surface">#E8F1FF</color>
+    <color name="info_surface">#EEF1F6</color>
+    <color name="text_primary">#202431</color>
+    <color name="text_secondary">#687083</color>
+    <color name="divider">#DDE1E8</color>
 </resources>
