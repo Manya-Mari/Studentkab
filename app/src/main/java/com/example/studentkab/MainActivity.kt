@@ -35,11 +35,13 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     try {
                         val database = DatabaseProvider.getDatabase(applicationContext)
-                        withContext(Dispatchers.IO) {
+                        val counts = withContext(Dispatchers.IO) {
                             DatabaseProvider.insertTestDataIfNeeded(database)
-                            disciplineCount = database.disciplineDao().getAll().size
-                            gradeCount = database.gradeDao().getAll().size
+                            database.disciplineDao().getAll().size to
+                                database.gradeDao().getAll().size
                         }
+                        disciplineCount = counts.first
+                        gradeCount = counts.second
                         databaseStatus = "База Room работает. Тестовые записи загружены."
                     } catch (exception: Exception) {
                         databaseStatus = "Ошибка работы с базой данных: ${exception.localizedMessage}"
