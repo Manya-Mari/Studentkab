@@ -1,606 +1,358 @@
 package com.example.studentkab
 
+import android.app.AlertDialog
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import com.example.studentkab.data.DatabaseProvider
 import com.example.studentkab.data.Discipline
 import com.example.studentkab.data.Grade
-import com.example.studentkab.ui.theme.StudentkabTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+
+    private val database by lazy { DatabaseProvider.getDatabase(applicationContext) }
+
+    private lateinit var disciplinesContainer: LinearLayout
+    private lateinit var gradesContainer: LinearLayout
+    private lateinit var disciplineCount: TextView
+    private lateinit var selectedDisciplineName: TextView
+    private lateinit var emptyDisciplines: TextView
+    private lateinit var emptyGrades: TextView
+    private lateinit var errorMessage: TextView
+
+    private var disciplines: List<Discipline> = emptyList()
+    private var grades: List<Grade> = emptyList()
+    private var selectedDiscipline: Discipline? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        setContent {
-            StudentkabTheme {
-                val database = remember { DatabaseProvider.getDatabase(applicationContext) }
-                val scope = rememberCoroutineScope()
-                var disciplines by remember { mutableStateOf(emptyList<Discipline>()) }
-                var grades by remember { mutableStateOf(emptyList<Grade>()) }
-                var selectedDiscipline by remember { mutableStateOf<Discipline?>(null) }
-                var showDisciplineDialog by remember { mutableStateOf(false) }
-                var editingDiscipline by remember { mutableStateOf<Discipline?>(null) }
-                var showGradeDialog by remember { mutableStateOf(false) }
-                var editingGrade by remember { mutableStateOf<Grade?>(null) }
-                var deletingDiscipline by remember { mutableStateOf<Discipline?>(null) }
-                var deletingGrade by remember { mutableStateOf<Grade?>(null) }
-                var errorMessage by remember { mutableStateOf<String?>(null) }
+        window.statusBarColor = getColor(R.color.screen_background)
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
 
-                /**
-                 * Загружает дисциплины. Если [selectedDiscipline] == null,
-                 * автоматически выбирает первую — чтобы секция «Оценки»
-                 * сразу отрисовывалась на экране.
-                 */
-                suspend fun loadDisciplines() {
-                    val result = withContext(Dispatchers.IO) {
-                        database.disciplineDao().getAll()
-                    }
-                    disciplines = result
+        disciplinesContainer = findViewById(R.id.disciplinesContainer)
+        gradesContainer = findViewById(R.id.gradesContainer)
+        disciplineCount = findViewById(R.id.disciplineCount)
+        selectedDisciplineName = findViewById(R.id.selectedDisciplineName)
+        emptyDisciplines = findViewById(R.id.emptyDisciplines)
+        emptyGrades = findViewById(R.id.emptyGrades)
+        errorMessage = findViewById(R.id.errorMessage)
 
-                    if (selectedDiscipline == null) {
-                        selectedDiscipline = result.firstOrNull()
-                    } else {
-                        // Обновить выбранную дисциплину по id (могла измениться)
-                        selectedDiscipline = result.find { it.id == selectedDiscipline?.id }
-                    }
+        findViewById<Button>(R.id.addDisciplineButton).setOnClickListener {
+            showDisciplineDialog(null)
+        }
+
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                DatabaseProvider.insertTestDataIfNeeded(applicationContext, database)
+            }
+            refreshData()
+        }
+    }
+
+    private suspend fun refreshData() {
+        val loaded = withContext(Dispatchers.IO) {
+            database.disciplineDao().getAll()
+        }
+        disciplines = loaded
+        selectedDiscipline = selectedDiscipline?.let { selected ->
+            loaded.find { it.id == selected.id }
+        } ?: loaded.firstOrNull()
+
+        grades = selectedDiscipline?.let { discipline ->
+            withContext(Dispatchers.IO) {
+                database.gradeDao().getByDiscipline(discipline.id)
+            }
+        } ?: emptyList()
+
+        renderDisciplines()
+        renderGrades()
+    }
+
+    private suspend fun refreshGrades() {
+        val current = selectedDiscipline
+        grades = if (current == null) {
+            emptyList()
+        } else {
+            withContext(Dispatchers.IO) {
+                database.gradeDao().getByDiscipline(current.id)
+            }
+        }
+        renderDisciplines()
+        renderGrades()
+    }
+
+    private fun renderDisciplines() {
+        disciplinesContainer.removeAllViews()
+        disciplineCount.text = disciplines.size.toString()
+        emptyDisciplines.visibility = if (disciplines.isEmpty()) View.VISIBLE else View.GONE
+
+        disciplines.forEach { discipline ->
+            val card = LayoutInflater.from(this)
+                .inflate(R.layout.item_discipline, disciplinesContainer, false)
+
+            card.findViewById<TextView>(R.id.disciplineName).text = discipline.name
+            card.findViewById<TextView>(R.id.teacherName).text =
+                discipline.teacherName?.takeIf { it.isNotBlank() } ?: "Преподаватель не указан"
+
+            card.setBackgroundResource(
+                if (selectedDiscipline?.id == discipline.id) {
+                    R.drawable.bg_discipline_selected
+                } else {
+                    R.drawable.bg_discipline_card
                 }
+            )
 
-                /**
-                 * Загружает оценки для конкретной дисциплины.
-                 */
-                suspend fun loadGrades(disciplineId: Long?) {
-                    grades = if (disciplineId == null) {
-                        emptyList()
-                    } else {
-                        withContext(Dispatchers.IO) {
-                            database.gradeDao().getByDiscipline(disciplineId)
+            card.setOnClickListener {
+                selectedDiscipline = discipline
+                lifecycleScope.launch { refreshGrades() }
+            }
+
+            card.findViewById<Button>(R.id.editDisciplineButton).setOnClickListener {
+                showDisciplineDialog(discipline)
+            }
+            card.findViewById<Button>(R.id.deleteDisciplineButton).setOnClickListener {
+                confirmDeleteDiscipline(discipline)
+            }
+            card.findViewById<Button>(R.id.addGradeButton).setOnClickListener {
+                selectedDiscipline = discipline
+                renderDisciplines()
+                showGradeDialog(null)
+            }
+
+            disciplinesContainer.addView(card)
+        }
+    }
+
+    private fun renderGrades() {
+        gradesContainer.removeAllViews()
+        val current = selectedDiscipline
+        selectedDisciplineName.text = current?.name ?: "Сначала добавьте дисциплину"
+        emptyGrades.visibility =
+            if (current != null && grades.isEmpty()) View.VISIBLE else View.GONE
+
+        grades.forEach { grade ->
+            val card = LayoutInflater.from(this)
+                .inflate(R.layout.item_grade, gradesContainer, false)
+
+            card.findViewById<TextView>(R.id.gradeValue).text = "Оценка: ${grade.value}"
+            card.findViewById<TextView>(R.id.gradeDate).text = "Дата: ${grade.date}"
+            card.findViewById<TextView>(R.id.gradeWorkType).text = "Тип работы: ${grade.workType}"
+
+            val comment = card.findViewById<TextView>(R.id.gradeComment)
+            if (grade.comment.isBlank()) {
+                comment.visibility = View.GONE
+            } else {
+                comment.visibility = View.VISIBLE
+                comment.text = "Комментарий: ${grade.comment}"
+            }
+
+            card.findViewById<Button>(R.id.editGradeButton).setOnClickListener {
+                showGradeDialog(grade)
+            }
+            card.findViewById<Button>(R.id.deleteGradeButton).setOnClickListener {
+                confirmDeleteGrade(grade)
+            }
+
+            gradesContainer.addView(card)
+        }
+    }
+
+    private fun showDisciplineDialog(initial: Discipline?) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_discipline, null)
+        val nameInput = dialogView.findViewById<EditText>(R.id.inputDisciplineName)
+        val teacherInput = dialogView.findViewById<EditText>(R.id.inputTeacherName)
+
+        nameInput.setText(initial?.name.orEmpty())
+        teacherInput.setText(initial?.teacherName.orEmpty())
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(if (initial == null) "Новая дисциплина" else "Изменить дисциплину")
+            .setView(dialogView)
+            .setNegativeButton("Отмена", null)
+            .setPositiveButton("Сохранить", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val name = nameInput.text.toString().trim()
+                val teacher = teacherInput.text.toString().trim()
+
+                when {
+                    name.isEmpty() -> nameInput.error = "Введите название дисциплины"
+                    name.length < 2 -> nameInput.error = "Минимум 2 символа"
+                    name.length > 100 -> nameInput.error = "Максимум 100 символов"
+                    else -> {
+                        lifecycleScope.launch {
+                            withContext(Dispatchers.IO) {
+                                if (initial == null) {
+                                    database.disciplineDao().insert(
+                                        Discipline(name = name, teacherName = teacher.ifBlank { null })
+                                    )
+                                } else {
+                                    database.disciplineDao().update(
+                                        initial.copy(name = name, teacherName = teacher.ifBlank { null })
+                                    )
+                                }
+                            }
+                            dialog.dismiss()
+                            clearError()
+                            refreshData()
                         }
                     }
                 }
+            }
+        }
+        dialog.show()
+    }
 
-                suspend fun refresh() {
-                    loadDisciplines()
-                    loadGrades(selectedDiscipline?.id)
+    private fun showGradeDialog(initial: Grade?) {
+        if (selectedDiscipline == null) {
+            showError("Сначала добавьте или выберите дисциплину.")
+            return
+        }
+
+        val dialogView = layoutInflater.inflate(R.layout.dialog_grade, null)
+        val valueInput = dialogView.findViewById<EditText>(R.id.inputGradeValue)
+        val dateInput = dialogView.findViewById<EditText>(R.id.inputGradeDate)
+        val workTypeInput = dialogView.findViewById<EditText>(R.id.inputWorkType)
+        val commentInput = dialogView.findViewById<EditText>(R.id.inputGradeComment)
+
+        valueInput.setText(initial?.value?.toString().orEmpty())
+        dateInput.setText(initial?.date.orEmpty())
+        workTypeInput.setText(initial?.workType.orEmpty())
+        commentInput.setText(initial?.comment.orEmpty())
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(if (initial == null) "Новая оценка" else "Изменить оценку")
+            .setView(dialogView)
+            .setNegativeButton("Отмена", null)
+            .setPositiveButton("Сохранить", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val valueText = valueInput.text.toString().trim()
+                val date = dateInput.text.toString().trim()
+                val workType = workTypeInput.text.toString().trim()
+                val comment = commentInput.text.toString().trim()
+                val value = valueText.toIntOrNull()
+
+                when {
+                    value == null || value !in 2..5 ->
+                        valueInput.error = "Оценка должна быть целым числом от 2 до 5"
+                    workType.isBlank() ->
+                        workTypeInput.error = "Заполните тип работы"
+                    validateDate(date) != null ->
+                        dateInput.error = validateDate(date)
+                    else -> {
+                        val discipline = selectedDiscipline ?: return@setOnClickListener
+                        lifecycleScope.launch {
+                            withContext(Dispatchers.IO) {
+                                if (initial == null) {
+                                    database.gradeDao().insert(
+                                        Grade(
+                                            disciplineId = discipline.id,
+                                            value = value,
+                                            date = date,
+                                            workType = workType,
+                                            comment = comment
+                                        )
+                                    )
+                                } else {
+                                    database.gradeDao().update(
+                                        initial.copy(
+                                            value = value,
+                                            date = date,
+                                            workType = workType,
+                                            comment = comment
+                                        )
+                                    )
+                                }
+                            }
+                            dialog.dismiss()
+                            clearError()
+                            refreshData()
+                        }
+                    }
                 }
+            }
+        }
+        dialog.show()
+    }
 
-                // 1. Первичная загрузка: показываем то, что есть в БД
-                LaunchedEffect(Unit) {
-                    refresh()
-                    // 2. Одноразовый сидинг
+    private fun confirmDeleteDiscipline(discipline: Discipline) {
+        AlertDialog.Builder(this)
+            .setTitle("Удалить дисциплину?")
+            .setMessage("«${discipline.name}» и все связанные с ней оценки будут удалены.")
+            .setNegativeButton("Отмена", null)
+            .setPositiveButton("Удалить") { _, _ ->
+                lifecycleScope.launch {
                     withContext(Dispatchers.IO) {
-                        DatabaseProvider.insertTestDataIfNeeded(applicationContext, database)
+                        database.disciplineDao().delete(discipline)
                     }
-                    // 3. Повторная загрузка после сидинга
-                    refresh()
-                }
-
-                // 4. Реакция на смену выбранной дисциплины: подгружаем её оценки.
-                //    Сработает и при автовыборе первой дисциплины после сидинга.
-                LaunchedEffect(selectedDiscipline?.id) {
-                    loadGrades(selectedDiscipline?.id)
-                }
-
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            "Личный кабинет",
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                        Text(
-                            "Успеваемость студента",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text("Дисциплины", style = MaterialTheme.typography.titleLarge)
-                            Button(
-                                modifier = Modifier.fillMaxWidth(),
-                                onClick = {
-                                    editingDiscipline = null
-                                    showDisciplineDialog = true
-                                }
-                            ) {
-                                Text("Добавить дисциплину")
-                            }
-                        }
-
-                        if (disciplines.isEmpty()) {
-                            Text("Дисциплин пока нет. Добавьте первую дисциплину.")
-                        }
-
-                        disciplines.forEach { discipline ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedDiscipline = discipline
-                                    },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (selectedDiscipline?.id == discipline.id)
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(14.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(discipline.name, style = MaterialTheme.typography.titleMedium)
-                                    Text(discipline.teacherName?.takeIf { it.isNotBlank() } ?: "Преподаватель не указан")
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Button(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            onClick = {
-                                                editingDiscipline = discipline
-                                                showDisciplineDialog = true
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.secondary,
-                                                contentColor = MaterialTheme.colorScheme.onSecondary
-                                            )
-                                        ) { Text("Изменить дисциплину") }
-
-                                        Button(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            onClick = { deletingDiscipline = discipline },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.error,
-                                                contentColor = MaterialTheme.colorScheme.onError
-                                            )
-                                        ) { Text("Удалить дисциплину") }
-
-                                        Button(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            onClick = {
-                                                selectedDiscipline = discipline
-                                                editingGrade = null
-                                                errorMessage = null
-                                                showGradeDialog = true
-                                            }
-                                        ) { Text("Добавить оценку") }
-                                    }
-                                }
-                            }
-                        }
-
-                        selectedDiscipline?.let { discipline ->
-                            Spacer(Modifier.height(4.dp))
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    "Оценки",
-                                    style = MaterialTheme.typography.titleLarge
-                                )
-                                Text(
-                                    discipline.name,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                            }
-
-                            if (grades.isEmpty()) {
-                                Text("Оценок пока нет.")
-                            }
-
-                            grades.forEach { grade ->
-                                Card(modifier = Modifier.fillMaxWidth()) {
-                                    Column(
-                                        modifier = Modifier.padding(14.dp),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text("Оценка: ${grade.value}", style = MaterialTheme.typography.titleMedium)
-                                        Text("Дата: ${grade.date}")
-                                        Text("Тип работы: ${grade.workType}")
-                                        if (grade.comment.isNotBlank()) Text("Комментарий: ${grade.comment}")
-
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            TextButton(
-                                                onClick = {
-                                                    editingGrade = grade
-                                                    showGradeDialog = true
-                                                },
-                                                colors = ButtonDefaults.textButtonColors(
-                                                    contentColor = MaterialTheme.colorScheme.secondary
-                                                )
-                                            ) { Text("Изменить") }
-
-                                            TextButton(
-                                                onClick = { deletingGrade = grade },
-                                                colors = ButtonDefaults.textButtonColors(
-                                                    contentColor = MaterialTheme.colorScheme.error
-                                                )
-                                            ) { Text("Удалить") }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        errorMessage?.let {
-                            Text(it, color = MaterialTheme.colorScheme.error)
-                        }
+                    if (selectedDiscipline?.id == discipline.id) {
+                        selectedDiscipline = null
                     }
-                }
-
-                deletingDiscipline?.let { discipline ->
-                    AlertDialog(
-                        onDismissRequest = { deletingDiscipline = null },
-                        title = { Text("Удалить дисциплину?") },
-                        text = { Text("«${discipline.name}» и все связанные с ней оценки будут удалены.") },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    scope.launch {
-                                        withContext(Dispatchers.IO) {
-                                            database.disciplineDao().delete(discipline)
-                                        }
-                                        if (selectedDiscipline?.id == discipline.id) {
-                                            selectedDiscipline = null
-                                        }
-                                        deletingDiscipline = null
-                                        refresh()
-                                    }
-                                },
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) { Text("Удалить") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { deletingDiscipline = null }) { Text("Отмена") }
-                        }
-                    )
-                }
-
-                deletingGrade?.let { grade ->
-                    AlertDialog(
-                        onDismissRequest = { deletingGrade = null },
-                        title = { Text("Удалить оценку?") },
-                        text = { Text("Запись с оценкой ${grade.value} будет удалена.") },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    scope.launch {
-                                        withContext(Dispatchers.IO) {
-                                            database.gradeDao().delete(grade)
-                                        }
-                                        deletingGrade = null
-                                        refresh()
-                                    }
-                                },
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) { Text("Удалить") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { deletingGrade = null }) { Text("Отмена") }
-                        }
-                    )
-                }
-
-                if (showDisciplineDialog) {
-                    DisciplineDialog(
-                        initial = editingDiscipline,
-                        onDismiss = { showDisciplineDialog = false },
-                        onSave = { name, teacher ->
-                            scope.launch {
-                                withContext(Dispatchers.IO) {
-                                    val current = editingDiscipline
-                                    if (current == null) {
-                                        database.disciplineDao().insert(
-                                            Discipline(name = name.trim(), teacherName = teacher.trim().ifBlank { null })
-                                        )
-                                    } else {
-                                        database.disciplineDao().update(
-                                            current.copy(name = name.trim(), teacherName = teacher.trim().ifBlank { null })
-                                        )
-                                    }
-                                }
-                                errorMessage = null
-                                showDisciplineDialog = false
-                                refresh()
-                            }
-                        }
-                    )
-                }
-
-                if (showGradeDialog && selectedDiscipline != null) {
-                    GradeDialog(
-                        initial = editingGrade,
-                        onDismiss = { showGradeDialog = false },
-                        onSave = { value, date, workType, comment ->
-                            scope.launch {
-                                val numericValue = value.trim().toInt()
-                                withContext(Dispatchers.IO) {
-                                    val current = editingGrade
-                                    if (current == null) {
-                                        database.gradeDao().insert(
-                                            Grade(
-                                                disciplineId = selectedDiscipline!!.id,
-                                                value = numericValue,
-                                                date = date.trim(),
-                                                workType = workType.trim(),
-                                                comment = comment.trim()
-                                            )
-                                        )
-                                    } else {
-                                        database.gradeDao().update(
-                                            current.copy(
-                                                value = numericValue,
-                                                date = date.trim(),
-                                                workType = workType.trim(),
-                                                comment = comment.trim()
-                                            )
-                                        )
-                                    }
-                                }
-                                errorMessage = null
-                                showGradeDialog = false
-                                refresh()
-                            }
-                        }
-                    )
+                    refreshData()
                 }
             }
-        }
+            .show()
     }
-}
 
-@androidx.compose.runtime.Composable
-private fun DisciplineDialog(
-    initial: Discipline?,
-    onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
-) {
-    var name by remember(initial) { mutableStateOf(initial?.name.orEmpty()) }
-    var teacher by remember(initial) { mutableStateOf(initial?.teacherName.orEmpty()) }
-    var localError by remember(initial) { mutableStateOf<String?>(null) }
-
-    val nameError = localError?.takeIf { it.contains("Название", ignoreCase = true) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (initial == null) "Новая дисциплина" else "Изменить дисциплину") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it; localError = null },
-                    label = { Text("Название") },
-                    singleLine = true,
-                    isError = nameError != null,
-                    supportingText = {
-                        Text(
-                            text = nameError ?: "Обязательное поле. Например: «Основы программирования»",
-                            color = if (nameError != null)
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+    private fun confirmDeleteGrade(grade: Grade) {
+        AlertDialog.Builder(this)
+            .setTitle("Удалить оценку?")
+            .setMessage("Запись с оценкой ${grade.value} будет удалена.")
+            .setNegativeButton("Отмена", null)
+            .setPositiveButton("Удалить") { _, _ ->
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        database.gradeDao().delete(grade)
                     }
-                )
-                OutlinedTextField(
-                    value = teacher,
-                    onValueChange = { teacher = it; localError = null },
-                    label = { Text("Преподаватель") },
-                    singleLine = true,
-                    supportingText = {
-                        Text("Необязательное поле. Например: «Иванова А. С.»")
-                    }
-                )
-
-                localError?.let { message ->
-                    if (message.isNotBlank() && nameError == null) {
-                        Text(
-                            text = message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
+                    refreshData()
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val trimmedName = name.trim()
-                if (trimmedName.isEmpty()) {
-                    localError = "Название дисциплины обязательно. Введите хотя бы одно слово."
-                    return@TextButton
-                }
-                if (trimmedName.length < 2) {
-                    localError = "Название слишком короткое — введите минимум 2 символа."
-                    return@TextButton
-                }
-                if (trimmedName.length > 100) {
-                    localError = "Название слишком длинное — максимум 100 символов."
-                    return@TextButton
-                }
-                onSave(name, teacher)
-            }) { Text("Сохранить") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Отмена") }
+            .show()
+    }
+
+    private fun validateDate(input: String): String? {
+        if (!Regex("""^\d{4}-\d{2}-\d{2}$""").matches(input)) {
+            return "Введите дату в формате ГГГГ-ММ-ДД"
         }
-    )
-}
+        val parts = input.split("-")
+        val year = parts[0].toInt()
+        val month = parts[1].toInt()
+        val day = parts[2].toInt()
+        if (month !in 1..12) return "Месяц должен быть от 01 до 12"
 
-@androidx.compose.runtime.Composable
-private fun GradeDialog(
-    initial: Grade?,
-    onDismiss: () -> Unit,
-    onSave: (String, String, String, String) -> Unit
-) {
-    var value by remember(initial) { mutableStateOf(initial?.value?.toString().orEmpty()) }
-    var date by remember(initial) { mutableStateOf(initial?.date.orEmpty()) }
-    var workType by remember(initial) { mutableStateOf(initial?.workType.orEmpty()) }
-    var comment by remember(initial) { mutableStateOf(initial?.comment.orEmpty()) }
-
-    var localError by remember(initial) { mutableStateOf<String?>(null) }
-
-    val dateError = localError?.takeIf { it.contains("дат", ignoreCase = true) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (initial == null) "Новая оценка" else "Изменить оценку") },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = { value = it; localError = null },
-                    label = { Text("Оценка (2–5)") },
-                    singleLine = true,
-                    isError = localError?.contains("Оценка", ignoreCase = true) == true
-                )
-
-                OutlinedTextField(
-                    value = date,
-                    onValueChange = { date = it; localError = null },
-                    label = { Text("Дата") },
-                    singleLine = true,
-                    isError = dateError != null,
-                    supportingText = {
-                        Text(
-                            text = dateError
-                                ?: "Формат: ГГГГ-ММ-ДД, например 2026-11-15",
-                            color = if (dateError != null)
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                )
-
-                OutlinedTextField(
-                    value = workType,
-                    onValueChange = { workType = it; localError = null },
-                    label = { Text("Тип работы") },
-                    singleLine = true,
-                    isError = localError?.contains("Тип работы", ignoreCase = true) == true
-                )
-
-                OutlinedTextField(
-                    value = comment,
-                    onValueChange = { comment = it },
-                    label = { Text("Комментарий") }
-                )
-
-                localError?.let { message ->
-                    if (message.isNotBlank()) {
-                        Text(
-                            text = message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val numericValue = value.trim().toIntOrNull()
-                if (numericValue == null || numericValue !in 2..5) {
-                    localError = "Оценка должна быть целым числом от 2 до 5."
-                    return@TextButton
-                }
-                if (workType.isBlank()) {
-                    localError = "Заполните тип работы (например, «Практическая работа»)."
-                    return@TextButton
-                }
-                val dateProblem = validateDate(date)
-                if (dateProblem != null) {
-                    localError = dateProblem
-                    return@TextButton
-                }
-                onSave(value, date, workType, comment)
-            }) { Text("Сохранить") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Отмена") }
+        val leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+        val daysInMonth = when (month) {
+            1, 3, 5, 7, 8, 10, 12 -> 31
+            4, 6, 9, 11 -> 30
+            else -> if (leap) 29 else 28
         }
-    )
-}
+        if (day !in 1..daysInMonth) return "Некорректный день для выбранного месяца"
+        return null
+    }
 
-private fun validateDate(input: String): String? {
-    val trimmed = input.trim()
-    if (trimmed.isEmpty()) {
-        return "Введите дату в формате ГГГГ-ММ-ДД, например 2026-11-15."
+    private fun showError(message: String) {
+        errorMessage.text = message
+        errorMessage.visibility = View.VISIBLE
     }
-    val regex = Regex("""^\d{4}-\d{2}-\d{2}$""")
-    if (!regex.matches(trimmed)) {
-        return "Неверный формат даты. Нужно ГГГГ-ММ-ДД, например 2026-11-15."
-    }
-    val (yearStr, monthStr, dayStr) = trimmed.split("-")
-    val year = yearStr.toInt()
-    val month = monthStr.toInt()
-    val day = dayStr.toInt()
 
-    if (month !in 1..12) {
-        return "Месяц должен быть от 01 до 12. Пример: 2026-11-15."
+    private fun clearError() {
+        errorMessage.text = ""
+        errorMessage.visibility = View.GONE
     }
-    val isLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
-    val daysInMonth = when (month) {
-        1, 3, 5, 7, 8, 10, 12 -> 31
-        4, 6, 9, 11 -> 30
-        2 -> if (isLeap) 29 else 28
-        else -> 0
-    }
-    if (day !in 1..daysInMonth) {
-        return "В месяце $monthStr не может быть дня $dayStr. Пример корректной даты: 2026-11-15."
-    }
-    return null
 }
