@@ -13,16 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import com.example.studentkab.data.DatabaseProvider
 import com.example.studentkab.data.Discipline
 import com.example.studentkab.data.Grade
-import com.example.studentkab.data.StudentDatabase
 import com.example.studentkab.ui.theme.StudentkabTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,26 +60,58 @@ class MainActivity : ComponentActivity() {
                 var deletingGrade by remember { mutableStateOf<Grade?>(null) }
                 var errorMessage by remember { mutableStateOf<String?>(null) }
 
-                suspend fun refresh() {
+                /**
+                 * Загружает дисциплины. Если [selectedDiscipline] == null,
+                 * автоматически выбирает первую — чтобы секция «Оценки»
+                 * сразу отрисовывалась на экране.
+                 */
+                suspend fun loadDisciplines() {
                     val result = withContext(Dispatchers.IO) {
                         database.disciplineDao().getAll()
                     }
                     disciplines = result
-                    selectedDiscipline = selectedDiscipline?.let { current ->
-                        result.find { it.id == current.id }
+
+                    if (selectedDiscipline == null) {
+                        selectedDiscipline = result.firstOrNull()
+                    } else {
+                        // Обновить выбранную дисциплину по id (могла измениться)
+                        selectedDiscipline = result.find { it.id == selectedDiscipline?.id }
                     }
-                    grades = selectedDiscipline?.let { discipline ->
-                        withContext(Dispatchers.IO) {
-                            database.gradeDao().getByDiscipline(discipline.id)
-                        }
-                    } ?: emptyList()
                 }
 
-                LaunchedEffect(Unit) {
-                    withContext(Dispatchers.IO) {
-                        DatabaseProvider.insertTestDataIfNeeded(database)
+                /**
+                 * Загружает оценки для конкретной дисциплины.
+                 */
+                suspend fun loadGrades(disciplineId: Long?) {
+                    grades = if (disciplineId == null) {
+                        emptyList()
+                    } else {
+                        withContext(Dispatchers.IO) {
+                            database.gradeDao().getByDiscipline(disciplineId)
+                        }
                     }
+                }
+
+                suspend fun refresh() {
+                    loadDisciplines()
+                    loadGrades(selectedDiscipline?.id)
+                }
+
+                // 1. Первичная загрузка: показываем то, что есть в БД
+                LaunchedEffect(Unit) {
                     refresh()
+                    // 2. Одноразовый сидинг
+                    withContext(Dispatchers.IO) {
+                        DatabaseProvider.insertTestDataIfNeeded(applicationContext, database)
+                    }
+                    // 3. Повторная загрузка после сидинга
+                    refresh()
+                }
+
+                // 4. Реакция на смену выбранной дисциплины: подгружаем её оценки.
+                //    Сработает и при автовыборе первой дисциплины после сидинга.
+                LaunchedEffect(selectedDiscipline?.id) {
+                    loadGrades(selectedDiscipline?.id)
                 }
 
                 Surface(
@@ -104,11 +133,6 @@ class MainActivity : ComponentActivity() {
                         Text(
                             "Успеваемость студента",
                             style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            "Спринт 2 · Дисциплины и оценки",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
                         )
 
                         Column(
@@ -137,7 +161,6 @@ class MainActivity : ComponentActivity() {
                                     .fillMaxWidth()
                                     .clickable {
                                         selectedDiscipline = discipline
-                                        scope.launch { refresh() }
                                     },
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (selectedDiscipline?.id == discipline.id)
@@ -153,19 +176,29 @@ class MainActivity : ComponentActivity() {
                                     Text(discipline.teacherName?.takeIf { it.isNotBlank() } ?: "Преподаватель не указан")
                                     Column(
                                         modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        OutlinedButton(
+                                        Button(
                                             modifier = Modifier.fillMaxWidth(),
                                             onClick = {
                                                 editingDiscipline = discipline
                                                 showDisciplineDialog = true
-                                            }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.secondary,
+                                                contentColor = MaterialTheme.colorScheme.onSecondary
+                                            )
                                         ) { Text("Изменить дисциплину") }
-                                        OutlinedButton(
+
+                                        Button(
                                             modifier = Modifier.fillMaxWidth(),
-                                            onClick = { deletingDiscipline = discipline }
+                                            onClick = { deletingDiscipline = discipline },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.error,
+                                                contentColor = MaterialTheme.colorScheme.onError
+                                            )
                                         ) { Text("Удалить дисциплину") }
+
                                         Button(
                                             modifier = Modifier.fillMaxWidth(),
                                             onClick = {
@@ -194,13 +227,6 @@ class MainActivity : ComponentActivity() {
                                     discipline.name,
                                     style = MaterialTheme.typography.titleMedium
                                 )
-                                Button(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    onClick = {
-                                        editingGrade = null
-                                        showGradeDialog = true
-                                    }
-                                ) { Text("Добавить оценку") }
                             }
 
                             if (grades.isEmpty()) {
@@ -217,14 +243,24 @@ class MainActivity : ComponentActivity() {
                                         Text("Дата: ${grade.date}")
                                         Text("Тип работы: ${grade.workType}")
                                         if (grade.comment.isNotBlank()) Text("Комментарий: ${grade.comment}")
+
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            TextButton(onClick = {
-                                                editingGrade = grade
-                                                showGradeDialog = true
-                                            }) { Text("Изменить") }
-                                            TextButton(onClick = {
-                                                deletingGrade = grade
-                                            }) { Text("Удалить") }
+                                            TextButton(
+                                                onClick = {
+                                                    editingGrade = grade
+                                                    showGradeDialog = true
+                                                },
+                                                colors = ButtonDefaults.textButtonColors(
+                                                    contentColor = MaterialTheme.colorScheme.secondary
+                                                )
+                                            ) { Text("Изменить") }
+
+                                            TextButton(
+                                                onClick = { deletingGrade = grade },
+                                                colors = ButtonDefaults.textButtonColors(
+                                                    contentColor = MaterialTheme.colorScheme.error
+                                                )
+                                            ) { Text("Удалить") }
                                         }
                                     }
                                 }
@@ -243,18 +279,23 @@ class MainActivity : ComponentActivity() {
                         title = { Text("Удалить дисциплину?") },
                         text = { Text("«${discipline.name}» и все связанные с ней оценки будут удалены.") },
                         confirmButton = {
-                            TextButton(onClick = {
-                                scope.launch {
-                                    withContext(Dispatchers.IO) {
-                                        database.disciplineDao().delete(discipline)
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        withContext(Dispatchers.IO) {
+                                            database.disciplineDao().delete(discipline)
+                                        }
+                                        if (selectedDiscipline?.id == discipline.id) {
+                                            selectedDiscipline = null
+                                        }
+                                        deletingDiscipline = null
+                                        refresh()
                                     }
-                                    if (selectedDiscipline?.id == discipline.id) {
-                                        selectedDiscipline = null
-                                    }
-                                    deletingDiscipline = null
-                                    refresh()
-                                }
-                            }) { Text("Удалить") }
+                                },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) { Text("Удалить") }
                         },
                         dismissButton = {
                             TextButton(onClick = { deletingDiscipline = null }) { Text("Отмена") }
@@ -268,15 +309,20 @@ class MainActivity : ComponentActivity() {
                         title = { Text("Удалить оценку?") },
                         text = { Text("Запись с оценкой ${grade.value} будет удалена.") },
                         confirmButton = {
-                            TextButton(onClick = {
-                                scope.launch {
-                                    withContext(Dispatchers.IO) {
-                                        database.gradeDao().delete(grade)
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        withContext(Dispatchers.IO) {
+                                            database.gradeDao().delete(grade)
+                                        }
+                                        deletingGrade = null
+                                        refresh()
                                     }
-                                    deletingGrade = null
-                                    refresh()
-                                }
-                            }) { Text("Удалить") }
+                                },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) { Text("Удалить") }
                         },
                         dismissButton = {
                             TextButton(onClick = { deletingGrade = null }) { Text("Отмена") }
@@ -290,10 +336,6 @@ class MainActivity : ComponentActivity() {
                         onDismiss = { showDisciplineDialog = false },
                         onSave = { name, teacher ->
                             scope.launch {
-                                if (name.isBlank()) {
-                                    errorMessage = "Введите название дисциплины."
-                                    return@launch
-                                }
                                 withContext(Dispatchers.IO) {
                                     val current = editingDiscipline
                                     if (current == null) {
@@ -320,15 +362,7 @@ class MainActivity : ComponentActivity() {
                         onDismiss = { showGradeDialog = false },
                         onSave = { value, date, workType, comment ->
                             scope.launch {
-                                val numericValue = value.toIntOrNull()
-                                if (numericValue == null || numericValue !in 2..5) {
-                                    errorMessage = "Оценка должна быть целым числом от 2 до 5."
-                                    return@launch
-                                }
-                                if (date.isBlank() || workType.isBlank()) {
-                                    errorMessage = "Заполните дату и тип работы."
-                                    return@launch
-                                }
+                                val numericValue = value.trim().toInt()
                                 withContext(Dispatchers.IO) {
                                     val current = editingGrade
                                     if (current == null) {
@@ -372,18 +406,69 @@ private fun DisciplineDialog(
 ) {
     var name by remember(initial) { mutableStateOf(initial?.name.orEmpty()) }
     var teacher by remember(initial) { mutableStateOf(initial?.teacherName.orEmpty()) }
+    var localError by remember(initial) { mutableStateOf<String?>(null) }
+
+    val nameError = localError?.takeIf { it.contains("Название", ignoreCase = true) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initial == null) "Новая дисциплина" else "Изменить дисциплину") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text("Название") }, singleLine = true)
-                OutlinedTextField(teacher, { teacher = it }, label = { Text("Преподаватель") }, singleLine = true)
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it; localError = null },
+                    label = { Text("Название") },
+                    singleLine = true,
+                    isError = nameError != null,
+                    supportingText = {
+                        Text(
+                            text = nameError ?: "Обязательное поле. Например: «Основы программирования»",
+                            color = if (nameError != null)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                )
+                OutlinedTextField(
+                    value = teacher,
+                    onValueChange = { teacher = it; localError = null },
+                    label = { Text("Преподаватель") },
+                    singleLine = true,
+                    supportingText = {
+                        Text("Необязательное поле. Например: «Иванова А. С.»")
+                    }
+                )
+
+                localError?.let { message ->
+                    if (message.isNotBlank() && nameError == null) {
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(name, teacher) }) { Text("Сохранить") }
+            TextButton(onClick = {
+                val trimmedName = name.trim()
+                if (trimmedName.isEmpty()) {
+                    localError = "Название дисциплины обязательно. Введите хотя бы одно слово."
+                    return@TextButton
+                }
+                if (trimmedName.length < 2) {
+                    localError = "Название слишком короткое — введите минимум 2 символа."
+                    return@TextButton
+                }
+                if (trimmedName.length > 100) {
+                    localError = "Название слишком длинное — максимум 100 символов."
+                    return@TextButton
+                }
+                onSave(name, teacher)
+            }) { Text("Сохранить") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Отмена") }
@@ -402,6 +487,10 @@ private fun GradeDialog(
     var workType by remember(initial) { mutableStateOf(initial?.workType.orEmpty()) }
     var comment by remember(initial) { mutableStateOf(initial?.comment.orEmpty()) }
 
+    var localError by remember(initial) { mutableStateOf<String?>(null) }
+
+    val dateError = localError?.takeIf { it.contains("дат", ignoreCase = true) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initial == null) "Новая оценка" else "Изменить оценку") },
@@ -410,17 +499,108 @@ private fun GradeDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(value, { value = it }, label = { Text("Оценка (2–5)") }, singleLine = true)
-                OutlinedTextField(date, { date = it }, label = { Text("Дата") }, singleLine = true)
-                OutlinedTextField(workType, { workType = it }, label = { Text("Тип работы") }, singleLine = true)
-                OutlinedTextField(comment, { comment = it }, label = { Text("Комментарий") })
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it; localError = null },
+                    label = { Text("Оценка (2–5)") },
+                    singleLine = true,
+                    isError = localError?.contains("Оценка", ignoreCase = true) == true
+                )
+
+                OutlinedTextField(
+                    value = date,
+                    onValueChange = { date = it; localError = null },
+                    label = { Text("Дата") },
+                    singleLine = true,
+                    isError = dateError != null,
+                    supportingText = {
+                        Text(
+                            text = dateError
+                                ?: "Формат: ГГГГ-ММ-ДД, например 2026-11-15",
+                            color = if (dateError != null)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                )
+
+                OutlinedTextField(
+                    value = workType,
+                    onValueChange = { workType = it; localError = null },
+                    label = { Text("Тип работы") },
+                    singleLine = true,
+                    isError = localError?.contains("Тип работы", ignoreCase = true) == true
+                )
+
+                OutlinedTextField(
+                    value = comment,
+                    onValueChange = { comment = it },
+                    label = { Text("Комментарий") }
+                )
+
+                localError?.let { message ->
+                    if (message.isNotBlank()) {
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(value, date, workType, comment) }) { Text("Сохранить") }
+            TextButton(onClick = {
+                val numericValue = value.trim().toIntOrNull()
+                if (numericValue == null || numericValue !in 2..5) {
+                    localError = "Оценка должна быть целым числом от 2 до 5."
+                    return@TextButton
+                }
+                if (workType.isBlank()) {
+                    localError = "Заполните тип работы (например, «Практическая работа»)."
+                    return@TextButton
+                }
+                val dateProblem = validateDate(date)
+                if (dateProblem != null) {
+                    localError = dateProblem
+                    return@TextButton
+                }
+                onSave(value, date, workType, comment)
+            }) { Text("Сохранить") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Отмена") }
         }
     )
+}
+
+private fun validateDate(input: String): String? {
+    val trimmed = input.trim()
+    if (trimmed.isEmpty()) {
+        return "Введите дату в формате ГГГГ-ММ-ДД, например 2026-11-15."
+    }
+    val regex = Regex("""^\d{4}-\d{2}-\d{2}$""")
+    if (!regex.matches(trimmed)) {
+        return "Неверный формат даты. Нужно ГГГГ-ММ-ДД, например 2026-11-15."
+    }
+    val (yearStr, monthStr, dayStr) = trimmed.split("-")
+    val year = yearStr.toInt()
+    val month = monthStr.toInt()
+    val day = dayStr.toInt()
+
+    if (month !in 1..12) {
+        return "Месяц должен быть от 01 до 12. Пример: 2026-11-15."
+    }
+    val isLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+    val daysInMonth = when (month) {
+        1, 3, 5, 7, 8, 10, 12 -> 31
+        4, 6, 9, 11 -> 30
+        2 -> if (isLeap) 29 else 28
+        else -> 0
+    }
+    if (day !in 1..daysInMonth) {
+        return "В месяце $monthStr не может быть дня $dayStr. Пример корректной даты: 2026-11-15."
+    }
+    return null
 }

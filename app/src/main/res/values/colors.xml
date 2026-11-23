@@ -7,4 +7,9 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="action_edit">#2E7D32</color>      <!-- зелёный: изменить -->
+    <color name="action_edit_container">#E8F5E9</color>
+    <color name="action_delete">#C62828</color>    <!-- красный: удалить -->
+    <color name="action_delete_container">#FFEBEE</color>
+    <color name="action_add">#1565C0</color>       <!-- синий: добавить -->
 </resources>
