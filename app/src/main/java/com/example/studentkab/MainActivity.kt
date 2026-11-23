@@ -58,6 +58,8 @@ class MainActivity : ComponentActivity() {
                 var editingDiscipline by remember { mutableStateOf<Discipline?>(null) }
                 var showGradeDialog by remember { mutableStateOf(false) }
                 var editingGrade by remember { mutableStateOf<Grade?>(null) }
+                var deletingDiscipline by remember { mutableStateOf<Discipline?>(null) }
+                var deletingGrade by remember { mutableStateOf<Grade?>(null) }
                 var errorMessage by remember { mutableStateOf<String?>(null) }
 
                 suspend fun refresh() {
@@ -146,15 +148,7 @@ class MainActivity : ComponentActivity() {
                                             showDisciplineDialog = true
                                         }) { Text("Изменить") }
                                         TextButton(onClick = {
-                                            scope.launch {
-                                                withContext(Dispatchers.IO) {
-                                                    database.disciplineDao().delete(discipline)
-                                                }
-                                                if (selectedDiscipline?.id == discipline.id) {
-                                                    selectedDiscipline = null
-                                                }
-                                                refresh()
-                                            }
+                                            deletingDiscipline = discipline
                                         }) { Text("Удалить") }
                                     }
                                 }
@@ -194,12 +188,7 @@ class MainActivity : ComponentActivity() {
                                                 showGradeDialog = true
                                             }) { Text("Изменить") }
                                             TextButton(onClick = {
-                                                scope.launch {
-                                                    withContext(Dispatchers.IO) {
-                                                        database.gradeDao().delete(grade)
-                                                    }
-                                                    refresh()
-                                                }
+                                                deletingGrade = grade
                                             }) { Text("Удалить") }
                                         }
                                     }
@@ -211,6 +200,53 @@ class MainActivity : ComponentActivity() {
                             Text(it, color = MaterialTheme.colorScheme.error)
                         }
                     }
+                }
+
+                deletingDiscipline?.let { discipline ->
+                    AlertDialog(
+                        onDismissRequest = { deletingDiscipline = null },
+                        title = { Text("Удалить дисциплину?") },
+                        text = { Text("«${discipline.name}» и все связанные с ней оценки будут удалены.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        database.disciplineDao().delete(discipline)
+                                    }
+                                    if (selectedDiscipline?.id == discipline.id) {
+                                        selectedDiscipline = null
+                                    }
+                                    deletingDiscipline = null
+                                    refresh()
+                                }
+                            }) { Text("Удалить") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { deletingDiscipline = null }) { Text("Отмена") }
+                        }
+                    )
+                }
+
+                deletingGrade?.let { grade ->
+                    AlertDialog(
+                        onDismissRequest = { deletingGrade = null },
+                        title = { Text("Удалить оценку?") },
+                        text = { Text("Запись с оценкой ${grade.value} будет удалена.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        database.gradeDao().delete(grade)
+                                    }
+                                    deletingGrade = null
+                                    refresh()
+                                }
+                            }) { Text("Удалить") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { deletingGrade = null }) { Text("Отмена") }
+                        }
+                    )
                 }
 
                 if (showDisciplineDialog) {
