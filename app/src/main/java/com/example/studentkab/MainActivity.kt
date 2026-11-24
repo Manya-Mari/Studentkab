@@ -8,6 +8,8 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Spinner
+import android.widget.ArrayAdapter
 import androidx.activity.ComponentActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -32,9 +34,18 @@ class MainActivity : ComponentActivity() {
     private lateinit var emptyDisciplines: TextView
     private lateinit var emptyGrades: TextView
     private lateinit var errorMessage: TextView
+    private lateinit var workTypeFilter: Spinner
+    private lateinit var sortGrades: Spinner
+    private lateinit var dateFromFilter: EditText
+    private lateinit var dateToFilter: EditText
+    private lateinit var filterMessage: TextView
+    private lateinit var globalAverage: TextView
+    private lateinit var disciplineAverage: TextView
+    private lateinit var progressDynamics: TextView
 
     private var disciplines: List<Discipline> = emptyList()
     private var grades: List<Grade> = emptyList()
+    private var allGrades: List<Grade> = emptyList()
     private var selectedDiscipline: Discipline? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,6 +70,22 @@ class MainActivity : ComponentActivity() {
         emptyDisciplines = findViewById(R.id.emptyDisciplines)
         emptyGrades = findViewById(R.id.emptyGrades)
         errorMessage = findViewById(R.id.errorMessage)
+        workTypeFilter = findViewById(R.id.workTypeFilter)
+        sortGrades = findViewById(R.id.sortGrades)
+        dateFromFilter = findViewById(R.id.dateFromFilter)
+        dateToFilter = findViewById(R.id.dateToFilter)
+        filterMessage = findViewById(R.id.filterMessage)
+        globalAverage = findViewById(R.id.globalAverage)
+        disciplineAverage = findViewById(R.id.disciplineAverage)
+        progressDynamics = findViewById(R.id.progressDynamics)
+
+        workTypeFilter.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
+            listOf("Все типы работ", "Практическая", "Лабораторная", "Контрольная"))
+        sortGrades.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
+            listOf("Сначала новые", "Сначала старые", "По возрастанию оценки", "По убыванию оценки"))
+        findViewById<Button>(R.id.applyFiltersButton).setOnClickListener { renderGrades() }
+        workTypeFilter.onItemSelectedListener = simpleSelectionListener { renderGrades() }
+        sortGrades.onItemSelectedListener = simpleSelectionListener { renderGrades() }
 
         findViewById<Button>(R.id.addDisciplineButton).setOnClickListener {
             showDisciplineDialog(null)
@@ -81,11 +108,8 @@ class MainActivity : ComponentActivity() {
             loaded.find { it.id == selected.id }
         } ?: loaded.firstOrNull()
 
-        grades = selectedDiscipline?.let { discipline ->
-            withContext(Dispatchers.IO) {
-                database.gradeDao().getByDiscipline(discipline.id)
-            }
-        } ?: emptyList()
+        allGrades = withContext(Dispatchers.IO) { database.gradeDao().getAll() }
+        grades = selectedDiscipline?.let { discipline -> allGrades.filter { it.disciplineId == discipline.id } } ?: emptyList()
 
         renderDisciplines()
         renderGrades()
@@ -93,13 +117,8 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun refreshGrades() {
         val current = selectedDiscipline
-        grades = if (current == null) {
-            emptyList()
-        } else {
-            withContext(Dispatchers.IO) {
-                database.gradeDao().getByDiscipline(current.id)
-            }
-        }
+        allGrades = withContext(Dispatchers.IO) { database.gradeDao().getAll() }
+        grades = if (current == null) emptyList() else allGrades.filter { it.disciplineId == current.id }
         renderDisciplines()
         renderGrades()
     }
@@ -149,54 +168,96 @@ class MainActivity : ComponentActivity() {
     private fun renderGrades() {
         gradesContainer.removeAllViews()
         val current = selectedDiscipline
-        selectedDisciplineName.text = current?.name ?: "Сначала добавьте дисциплину"
-        emptyGrades.visibility =
-            if (current != null && grades.isEmpty()) View.VISIBLE else View.GONE
-
+        selectedDisciplineName.text = current?.name ?: "Все дисциплины"
         val averageView = findViewById<TextView>(R.id.averageGrade)
-        val weightedAverageView = findViewById<TextView>(R.id.weightedAverageGrade)
-        if (grades.isEmpty()) {
-            averageView.text = "Обычный средний балл: —"
-            weightedAverageView.text = "Взвешенный средний балл: —"
+        globalAverage.text = if (allGrades.isEmpty()) {
+            "Общий средний балл по всем записям: — (оценок пока нет)"
         } else {
-            val average = grades.map { it.value }.average()
-            val totalWeight = grades.sumOf { weightForWorkType(it.workType) }
-            val weightedAverage = grades.sumOf {
-                it.value * weightForWorkType(it.workType)
-            } / totalWeight
-            averageView.text = "Обычный средний балл: ${formatAverage(average)}"
-            weightedAverageView.text =
-                "Взвешенный средний балл: ${formatAverage(weightedAverage)}"
+            "Общий средний балл по всем записям: ${formatAverage(allGrades.map { it.value }.average())}"
+        }
+        val disciplineLines = disciplines.mapNotNull { discipline ->
+            val items = allGrades.filter { it.disciplineId == discipline.id }
+            if (items.isEmpty()) null else "${discipline.name}: ${formatAverage(items.map { it.value }.average())}"
+        }
+        disciplineAverage.text = if (disciplineLines.isEmpty()) "Средние баллы по дисциплинам: пока нет оценок."
+        else "Средние баллы по дисциплинам:\n" + disciplineLines.joinToString("\n")
+
+        val from = dateFromFilter.text.toString().trim()
+        val to = dateToFilter.text.toString().trim()
+        val validFrom = from.isBlank() || validateDate(from) == null
+        val validTo = to.isBlank() || validateDate(to) == null
+        if (!validFrom || !validTo || (from.isNotBlank() && to.isNotBlank() && from > to)) {
+            averageView.text = "Средний балл по выбранному фильтру: —"
+            findViewById<TextView>(R.id.weightedAverageGrade).text = "Взвешенный средний балл: —"
+            filterMessage.visibility = View.VISIBLE
+            filterMessage.text = "Проверьте период: даты должны быть в формате ГГГГ-ММ-ДД, начало не позже конца."
+            return
+        }
+        filterMessage.visibility = View.GONE
+
+        var visibleGrades = grades.filter { grade ->
+            (from.isBlank() || grade.date >= from) && (to.isBlank() || grade.date <= to) &&
+                matchesWorkType(grade.workType, workTypeFilter.selectedItemPosition)
+        }
+        visibleGrades = when (sortGrades.selectedItemPosition) {
+            1 -> visibleGrades.sortedWith(compareBy<Grade> { it.date }.thenBy { it.id })
+            2 -> visibleGrades.sortedBy { it.value }
+            3 -> visibleGrades.sortedByDescending { it.value }
+            else -> visibleGrades.sortedWith(compareByDescending<Grade> { it.date }.thenByDescending { it.id })
         }
 
-        grades.forEach { grade ->
-            val card = LayoutInflater.from(this)
-                .inflate(R.layout.item_grade, gradesContainer, false)
+        if (visibleGrades.isEmpty()) {
+            averageView.text = "Средний балл по выбранному фильтру: —"
+            findViewById<TextView>(R.id.weightedAverageGrade).text = "Взвешенный средний балл: —"
+            emptyGrades.text = if (grades.isEmpty()) "По этой дисциплине оценок пока нет." else "За выбранный период и тип работы оценок нет."
+            emptyGrades.visibility = if (current != null || allGrades.isNotEmpty()) View.VISIBLE else View.GONE
+        } else {
+            emptyGrades.visibility = View.GONE
+            averageView.text = "Средний балл по выбранному фильтру: ${formatAverage(visibleGrades.map { it.value }.average())}"
+            val totalWeight = visibleGrades.sumOf { weightForWorkType(it.workType) }
+            val weightedAverage = visibleGrades.sumOf { it.value * weightForWorkType(it.workType) } / totalWeight
+            findViewById<TextView>(R.id.weightedAverageGrade).text = "Взвешенный средний балл: ${formatAverage(weightedAverage)}"
+        }
 
+        val monthly = visibleGrades.groupBy { it.date.take(7) }.toSortedMap()
+        progressDynamics.text = if (monthly.isEmpty()) "Динамика по месяцам: пока недостаточно данных."
+        else "Динамика по месяцам (среднее арифметическое):\n" +
+            monthly.entries.joinToString("\n") { (month, monthGrades) ->
+                "$month — ${formatAverage(monthGrades.map { it.value }.average())} (${monthGrades.size} оцен.)"
+            }
+
+        visibleGrades.forEach { grade ->
+            val card = LayoutInflater.from(this).inflate(R.layout.item_grade, gradesContainer, false)
             card.findViewById<TextView>(R.id.gradeValue).text = "Оценка: ${grade.value}"
             card.findViewById<TextView>(R.id.gradeDate).text = "Дата: ${grade.date}"
-            card.findViewById<TextView>(R.id.gradeWeight).text =
-                "Вес работы: ${formatAverage(weightForWorkType(grade.workType))}"
+            card.findViewById<TextView>(R.id.gradeWeight).text = "Вес работы: ${formatAverage(weightForWorkType(grade.workType))}"
             card.findViewById<TextView>(R.id.gradeWorkType).text = "Тип работы: ${grade.workType}"
-
             val comment = card.findViewById<TextView>(R.id.gradeComment)
-            if (grade.comment.isBlank()) {
-                comment.visibility = View.GONE
-            } else {
+            if (grade.comment.isBlank()) comment.visibility = View.GONE else {
                 comment.visibility = View.VISIBLE
                 comment.text = "Комментарий: ${grade.comment}"
             }
-
-            card.findViewById<Button>(R.id.editGradeButton).setOnClickListener {
-                showGradeDialog(grade)
-            }
-            card.findViewById<Button>(R.id.deleteGradeButton).setOnClickListener {
-                confirmDeleteGrade(grade)
-            }
-
+            card.findViewById<Button>(R.id.editGradeButton).setOnClickListener { showGradeDialog(grade) }
+            card.findViewById<Button>(R.id.deleteGradeButton).setOnClickListener { confirmDeleteGrade(grade) }
             gradesContainer.addView(card)
         }
     }
+
+    private fun matchesWorkType(workType: String, selectedPosition: Int): Boolean {
+        val normalized = workType.trim().lowercase(Locale.ROOT)
+        return when (selectedPosition) {
+            1 -> "практичес" in normalized
+            2 -> "лаборатор" in normalized
+            3 -> "контрольн" in normalized
+            else -> true
+        }
+    }
+
+    private fun simpleSelectionListener(onSelected: () -> Unit) =
+        object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) { onSelected() }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+        }
 
     private fun showDisciplineDialog(initial: Discipline?) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_discipline, null)
@@ -255,12 +316,14 @@ class MainActivity : ComponentActivity() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_grade, null)
         val valueInput = dialogView.findViewById<EditText>(R.id.inputGradeValue)
         val dateInput = dialogView.findViewById<EditText>(R.id.inputGradeDate)
-        val workTypeInput = dialogView.findViewById<EditText>(R.id.inputWorkType)
+        val workTypeInput = dialogView.findViewById<Spinner>(R.id.inputWorkType)
+        val workTypes = listOf("Практическая", "Лабораторная", "Контрольная")
+        workTypeInput.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, workTypes)
         val commentInput = dialogView.findViewById<EditText>(R.id.inputGradeComment)
 
         valueInput.setText(initial?.value?.toString().orEmpty())
         dateInput.setText(initial?.date.orEmpty())
-        workTypeInput.setText(initial?.workType.orEmpty())
+        workTypeInput.setSelection(workTypes.indexOfFirst { initial?.workType?.startsWith(it, ignoreCase = true) == true }.takeIf { it >= 0 } ?: 0)
         commentInput.setText(initial?.comment.orEmpty())
 
         val dialog = AlertDialog.Builder(this)
@@ -274,15 +337,13 @@ class MainActivity : ComponentActivity() {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val valueText = valueInput.text.toString().trim()
                 val date = dateInput.text.toString().trim()
-                val workType = workTypeInput.text.toString().trim()
+                val workType = workTypeInput.selectedItem?.toString().orEmpty()
                 val comment = commentInput.text.toString().trim()
                 val value = valueText.toIntOrNull()
 
                 when {
                     value == null || value !in 2..5 ->
                         valueInput.error = "Оценка должна быть целым числом от 2 до 5"
-                    workType.isBlank() ->
-                        workTypeInput.error = "Заполните тип работы"
                     validateDate(date) != null ->
                         dateInput.error = validateDate(date)
                     else -> {
