@@ -9,7 +9,7 @@
     <!-- Тема диалогов -->
     <style name="Theme.Studentkab.Dialog" parent="android:Theme.Material.Light.Dialog.Alert">
         <item name="android:colorAccent">@color/action_add</item>
-        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:windowBackground">@drawable/surface_dialog_bg</item>
         <item name="android:windowMinWidthMajor">90%</item>
         <item name="android:windowMinWidthMinor">90%</item>
         <item name="android:windowContentOverlay">@null</item>
@@ -17,7 +17,8 @@
 
     <!-- Стиль поля ввода в диалогах -->
     <style name="Widget.Studentkab.TextInput" parent="android:Widget.Material.EditText">
-        <item name="android:background">@drawable/bg_text_input</item>
+        <!-- ИСПРАВЛЕНО ЗДЕСЬ: bg_text_input заменен на field_input_bg -->
+        <item name="android:background">@drawable/field_input_bg</item>
         <item name="android:paddingStart">16dp</item>
         <item name="android:paddingEnd">16dp</item>
         <item name="android:paddingTop">14dp</item>
@@ -30,7 +31,7 @@
 
     <!-- Закруглённые кнопки действий -->
     <style name="Widget.Studentkab.Button" parent="android:Widget.Material.Button">
-        <item name="android:background">@drawable/bg_button_primary</item>
+        <item name="android:background">@drawable/btn_primary_bg</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:textSize">15sp</item>
         <item name="android:textColor">@android:color/white</item>
@@ -42,15 +43,15 @@
     </style>
 
     <style name="Widget.Studentkab.Button.Edit" parent="Widget.Studentkab.Button">
-        <item name="android:background">@drawable/bg_button_edit</item>
+        <item name="android:background">@drawable/btn_edit_bg</item>
     </style>
 
     <style name="Widget.Studentkab.Button.Delete" parent="Widget.Studentkab.Button">
-        <item name="android:background">@drawable/bg_button_delete</item>
+        <item name="android:background">@drawable/btn_delete_bg</item>
     </style>
 
     <style name="Widget.Studentkab.Button.Add" parent="Widget.Studentkab.Button">
-        <item name="android:background">@drawable/bg_button_add</item>
+        <item name="android:background">@drawable/btn_add_bg</item>
     </style>
 
     <!-- Компактная кнопка (Изменить/Удалить в карточке оценки) -->
@@ -65,12 +66,12 @@
     </style>
 
     <style name="Widget.Studentkab.Button.Compact.Edit" parent="Widget.Studentkab.Button.Compact">
-        <item name="android:background">@drawable/bg_button_edit_container</item>
+        <item name="android:background">@drawable/btn_edit_container_bg</item>
         <item name="android:textColor">@color/action_edit</item>
     </style>
 
     <style name="Widget.Studentkab.Button.Compact.Delete" parent="Widget.Studentkab.Button.Compact">
-        <item name="android:background">@drawable/bg_button_delete_container</item>
+        <item name="android:background">@drawable/btn_delete_container_bg</item>
         <item name="android:textColor">@color/action_delete</item>
     </style>
 

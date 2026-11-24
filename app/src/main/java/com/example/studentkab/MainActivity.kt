@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.studentkab.data.DatabaseProvider
 import com.example.studentkab.data.Discipline
@@ -24,7 +25,7 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
-  
+
     private val database by lazy { DatabaseProvider.getDatabase(applicationContext) }
 
     private lateinit var disciplinesContainer: LinearLayout
@@ -60,8 +61,12 @@ class MainActivity : ComponentActivity() {
             insets
         }
 
+        // Подавляем предупреждение об устаревшем методе, так как для старых версий Android он работает корректно
+        @Suppress("DEPRECATION")
         window.statusBarColor = getColor(R.color.screen_background)
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+
+        val windowInsetsController = WindowInsetsControllerCompat(window, window.decorView)
+        windowInsetsController.isAppearanceLightStatusBars = true
 
         disciplinesContainer = findViewById(R.id.disciplinesContainer)
         gradesContainer = findViewById(R.id.gradesContainer)
@@ -81,17 +86,18 @@ class MainActivity : ComponentActivity() {
 
         val workTypeAdapter = ArrayAdapter(
             this,
-            android.R.layout.simple_spinner_item,
+            R.layout.spinner_item,
             listOf("Все типы работ", "Практическая", "Лабораторная", "Контрольная")
-        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
         workTypeFilter.adapter = workTypeAdapter
 
         val sortAdapter = ArrayAdapter(
             this,
-            android.R.layout.simple_spinner_item,
+            R.layout.spinner_item,
             listOf("Сначала новые", "Сначала старые", "По возрастанию оценки", "По убыванию оценки")
-        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
         sortGrades.adapter = sortAdapter
+
         findViewById<Button>(R.id.applyFiltersButton).setOnClickListener { renderGrades() }
         workTypeFilter.onItemSelectedListener = simpleSelectionListener { renderGrades() }
         sortGrades.onItemSelectedListener = simpleSelectionListener { renderGrades() }
@@ -145,11 +151,12 @@ class MainActivity : ComponentActivity() {
             card.findViewById<TextView>(R.id.teacherName).text =
                 discipline.teacherName?.takeIf { it.isNotBlank() } ?: "Преподаватель не указан"
 
+            // НОВЫЕ НАЗВАНИЯ РЕСУРСОВ
             card.setBackgroundResource(
                 if (selectedDiscipline?.id == discipline.id) {
-                    R.drawable.bg_discipline_selected
+                    R.drawable.card_discipline_selected
                 } else {
-                    R.drawable.bg_discipline_card
+                    R.drawable.card_discipline_bg
                 }
             )
 
@@ -206,7 +213,7 @@ class MainActivity : ComponentActivity() {
 
         var visibleGrades = grades.filter { grade ->
             (from.isBlank() || grade.date >= from) && (to.isBlank() || grade.date <= to) &&
-                matchesWorkType(grade.workType, workTypeFilter.selectedItemPosition)
+                    matchesWorkType(grade.workType, workTypeFilter.selectedItemPosition)
         }
         visibleGrades = when (sortGrades.selectedItemPosition) {
             1 -> visibleGrades.sortedWith(compareBy<Grade> { it.date }.thenBy { it.id })
@@ -231,9 +238,9 @@ class MainActivity : ComponentActivity() {
         val monthly = visibleGrades.groupBy { it.date.take(7) }.toSortedMap()
         progressDynamics.text = if (monthly.isEmpty()) "Динамика по месяцам: пока недостаточно данных."
         else "Динамика по месяцам (среднее арифметическое):\n" +
-            monthly.entries.joinToString("\n") { (month, monthGrades) ->
-                "$month — ${formatAverage(monthGrades.map { it.value }.average())} (${monthGrades.size} оцен.)"
-            }
+                monthly.entries.joinToString("\n") { (month, monthGrades) ->
+                    "$month — ${formatAverage(monthGrades.map { it.value }.average())} (${monthGrades.size} оцен.)"
+                }
 
         visibleGrades.forEach { grade ->
             val card = LayoutInflater.from(this).inflate(R.layout.item_grade, gradesContainer, false)
@@ -445,7 +452,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun formatAverage(value: Double): String =
-        String.format(Locale("ru", "RU"), "%.2f", value)
+        String.format(Locale.forLanguageTag("ru-RU"), "%.2f", value)
 
     private fun validateDate(input: String): String? {
         if (!Regex("""^\d{4}-\d{2}-\d{2}$""").matches(input)) {
