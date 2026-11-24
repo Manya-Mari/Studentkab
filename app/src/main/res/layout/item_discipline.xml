@@ -26,31 +26,25 @@
 
     <Button
         android:id="@+id/editDisciplineButton"
+        style="@style/Widget.Studentkab.Button.Edit"
         android:layout_width="match_parent"
         android:layout_height="46dp"
         android:layout_marginTop="12dp"
-        android:backgroundTint="@color/action_edit"
-        android:text="Изменить дисциплину"
-        android:textAllCaps="false"
-        android:textColor="@android:color/white" />
+        android:text="Изменить дисциплину" />
 
     <Button
         android:id="@+id/deleteDisciplineButton"
+        style="@style/Widget.Studentkab.Button.Delete"
         android:layout_width="match_parent"
         android:layout_height="46dp"
         android:layout_marginTop="6dp"
-        android:backgroundTint="@color/action_delete"
-        android:text="Удалить дисциплину"
-        android:textAllCaps="false"
-        android:textColor="@android:color/white" />
+        android:text="Удалить дисциплину" />
 
     <Button
         android:id="@+id/addGradeButton"
+        style="@style/Widget.Studentkab.Button.Add"
         android:layout_width="match_parent"
         android:layout_height="46dp"
         android:layout_marginTop="6dp"
-        android:backgroundTint="@color/action_add"
-        android:text="Добавить оценку"
-        android:textAllCaps="false"
-        android:textColor="@android:color/white" />
+        android:text="Добавить оценку" />
 </LinearLayout>

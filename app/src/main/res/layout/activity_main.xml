@@ -58,14 +58,11 @@
 
         <Button
             android:id="@+id/addDisciplineButton"
+            style="@style/Widget.Studentkab.Button.Add"
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:layout_marginTop="12dp"
-            android:backgroundTint="@color/action_add"
-            android:text="＋  Добавить дисциплину"
-            android:textAllCaps="false"
-            android:textColor="@android:color/white"
-            android:textSize="15sp" />
+            android:text="＋  Добавить дисциплину" />
 
         <TextView
             android:id="@+id/emptyDisciplines"

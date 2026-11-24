@@ -3,10 +3,13 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
     android:paddingTop="8dp">
 
     <EditText
         android:id="@+id/inputDisciplineName"
+        style="@style/Widget.Studentkab.TextInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Название дисциплины"
@@ -17,15 +20,17 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:layout_marginStart="4dp"
         android:text="Обязательное поле. Например: Основы программирования"
         android:textColor="@color/text_secondary"
         android:textSize="12sp" />
 
     <EditText
         android:id="@+id/inputTeacherName"
+        style="@style/Widget.Studentkab.TextInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
         android:hint="Преподаватель"
         android:inputType="textCapSentences"
         android:singleLine="true" />
@@ -33,6 +38,8 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:layout_marginStart="4dp"
         android:text="Необязательное поле"
         android:textColor="@color/text_secondary"
         android:textSize="12sp" />

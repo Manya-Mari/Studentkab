@@ -43,27 +43,23 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
         android:gravity="end"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/editGradeButton"
+            style="@style/Widget.Studentkab.Button.Compact.Edit"
             android:layout_width="wrap_content"
             android:layout_height="42dp"
-            android:backgroundTint="@color/action_edit_container"
-            android:text="Изменить"
-            android:textAllCaps="false"
-            android:textColor="@color/action_edit" />
+            android:text="Изменить" />
 
         <Button
             android:id="@+id/deleteGradeButton"
+            style="@style/Widget.Studentkab.Button.Compact.Delete"
             android:layout_width="wrap_content"
             android:layout_height="42dp"
             android:layout_marginStart="8dp"
-            android:backgroundTint="@color/action_delete_container"
-            android:text="Удалить"
-            android:textAllCaps="false"
-            android:textColor="@color/action_delete" />
+            android:text="Удалить" />
     </LinearLayout>
 </LinearLayout>
