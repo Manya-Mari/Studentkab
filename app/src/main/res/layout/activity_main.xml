@@ -145,45 +145,122 @@
             android:textColor="@color/text_primary"
             android:textSize="14sp" />
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Фильтры журнала (дисциплина выбирается слева)"
-            android:textColor="@color/text_primary"
-            android:textStyle="bold" />
+            android:layout_marginTop="18dp"
+            android:background="@drawable/bg_discipline_card"
+            android:orientation="vertical"
+            android:padding="14dp">
 
-        <EditText
-            android:id="@+id/dateFromFilter"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:hint="Дата с (ГГГГ-ММ-ДД)"
-            android:inputType="date"
-            android:singleLine="true" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Фильтры"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-        <EditText
-            android:id="@+id/dateToFilter"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:hint="Дата по (ГГГГ-ММ-ДД)"
-            android:inputType="date"
-            android:singleLine="true" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="Настройте отображение оценок"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
 
-        <Spinner
-            android:id="@+id/workTypeFilter"
-            android:layout_width="match_parent"
-            android:layout_height="48dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="Период"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
-        <Spinner
-            android:id="@+id/sortGrades"
-            android:layout_width="match_parent"
-            android:layout_height="48dp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/applyFiltersButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="Применить фильтры" />
+                <EditText
+                    android:id="@+id/dateFromFilter"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="5dp"
+                    android:background="@drawable/bg_text_input"
+                    android:hint="Дата с"
+                    android:inputType="date"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:singleLine="true"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/dateToFilter"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="5dp"
+                    android:background="@drawable/bg_text_input"
+                    android:hint="Дата по"
+                    android:inputType="date"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:singleLine="true"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_secondary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Тип работы"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <Spinner
+                android:id="@+id/workTypeFilter"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_text_input"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Сортировка"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <Spinner
+                android:id="@+id/sortGrades"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_text_input"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp" />
+
+            <Button
+                android:id="@+id/applyFiltersButton"
+                style="@style/Widget.Studentkab.Button.Add"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="14dp"
+                android:text="Применить фильтры" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/filterMessage"
