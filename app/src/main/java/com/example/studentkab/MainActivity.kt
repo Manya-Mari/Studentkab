@@ -19,6 +19,7 @@ import com.example.studentkab.data.Grade
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
@@ -152,12 +153,30 @@ class MainActivity : ComponentActivity() {
         emptyGrades.visibility =
             if (current != null && grades.isEmpty()) View.VISIBLE else View.GONE
 
+        val averageView = findViewById<TextView>(R.id.averageGrade)
+        val weightedAverageView = findViewById<TextView>(R.id.weightedAverageGrade)
+        if (grades.isEmpty()) {
+            averageView.text = "Обычный средний балл: —"
+            weightedAverageView.text = "Взвешенный средний балл: —"
+        } else {
+            val average = grades.map { it.value }.average()
+            val totalWeight = grades.sumOf { weightForWorkType(it.workType) }
+            val weightedAverage = grades.sumOf {
+                it.value * weightForWorkType(it.workType)
+            } / totalWeight
+            averageView.text = "Обычный средний балл: ${formatAverage(average)}"
+            weightedAverageView.text =
+                "Взвешенный средний балл: ${formatAverage(weightedAverage)}"
+        }
+
         grades.forEach { grade ->
             val card = LayoutInflater.from(this)
                 .inflate(R.layout.item_grade, gradesContainer, false)
 
             card.findViewById<TextView>(R.id.gradeValue).text = "Оценка: ${grade.value}"
             card.findViewById<TextView>(R.id.gradeDate).text = "Дата: ${grade.date}"
+            card.findViewById<TextView>(R.id.gradeWeight).text =
+                "Вес работы: ${formatAverage(weightForWorkType(grade.workType))}"
             card.findViewById<TextView>(R.id.gradeWorkType).text = "Тип работы: ${grade.workType}"
 
             val comment = card.findViewById<TextView>(R.id.gradeComment)
@@ -336,6 +355,19 @@ class MainActivity : ComponentActivity() {
             }
             .show()
     }
+
+    private fun weightForWorkType(workType: String): Double {
+        val normalizedType = workType.trim().lowercase(Locale.ROOT)
+        return when {
+            "практичес" in normalizedType -> 1.0
+            "лаборатор" in normalizedType -> 1.5
+            "контрольн" in normalizedType -> 2.0
+            else -> 1.0
+        }
+    }
+
+    private fun formatAverage(value: Double): String =
+        String.format(Locale("ru", "RU"), "%.2f", value)
 
     private fun validateDate(input: String): String? {
         if (!Regex("""^\d{4}-\d{2}-\d{2}$""").matches(input)) {
