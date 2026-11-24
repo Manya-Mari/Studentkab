@@ -79,10 +79,19 @@ class MainActivity : ComponentActivity() {
         disciplineAverage = findViewById(R.id.disciplineAverage)
         progressDynamics = findViewById(R.id.progressDynamics)
 
-        workTypeFilter.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
-            listOf("Все типы работ", "Практическая", "Лабораторная", "Контрольная"))
-        sortGrades.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
-            listOf("Сначала новые", "Сначала старые", "По возрастанию оценки", "По убыванию оценки"))
+        val workTypeAdapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            listOf("Все типы работ", "Практическая", "Лабораторная", "Контрольная")
+        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        workTypeFilter.adapter = workTypeAdapter
+
+        val sortAdapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            listOf("Сначала новые", "Сначала старые", "По возрастанию оценки", "По убыванию оценки")
+        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        sortGrades.adapter = sortAdapter
         findViewById<Button>(R.id.applyFiltersButton).setOnClickListener { renderGrades() }
         workTypeFilter.onItemSelectedListener = simpleSelectionListener { renderGrades() }
         sortGrades.onItemSelectedListener = simpleSelectionListener { renderGrades() }
