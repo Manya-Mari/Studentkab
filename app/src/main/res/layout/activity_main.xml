@@ -107,6 +107,26 @@
             android:textSize="15sp" />
 
         <TextView
+            android:id="@+id/averageGrade"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Обычный средний балл: —"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/weightedAverageGrade"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Взвешенный средний балл: —"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
             android:id="@+id/emptyGrades"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
