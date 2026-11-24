@@ -327,12 +327,18 @@ class MainActivity : ComponentActivity() {
         val dateInput = dialogView.findViewById<EditText>(R.id.inputGradeDate)
         val workTypeInput = dialogView.findViewById<Spinner>(R.id.inputWorkType)
         val workTypes = listOf("Практическая", "Лабораторная", "Контрольная")
-        workTypeInput.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, workTypes)
+        workTypeInput.adapter = ArrayAdapter(this, R.layout.spinner_item, workTypes).also {
+            it.setDropDownViewResource(R.layout.spinner_dropdown_item)
+        }
         val commentInput = dialogView.findViewById<EditText>(R.id.inputGradeComment)
 
         valueInput.setText(initial?.value?.toString().orEmpty())
         dateInput.setText(initial?.date.orEmpty())
-        workTypeInput.setSelection(workTypes.indexOfFirst { initial?.workType?.startsWith(it, ignoreCase = true) == true }.takeIf { it >= 0 } ?: 0)
+        workTypeInput.setSelection(
+            workTypes.indexOfFirst {
+                initial?.workType?.startsWith(it, ignoreCase = true) == true
+            }.takeIf { it >= 0 } ?: 0
+        )
         commentInput.setText(initial?.comment.orEmpty())
 
         val dialog = AlertDialog.Builder(this)
@@ -353,8 +359,10 @@ class MainActivity : ComponentActivity() {
                 when {
                     value == null || value !in 2..5 ->
                         valueInput.error = "Оценка должна быть целым числом от 2 до 5"
+
                     validateDate(date) != null ->
                         dateInput.error = validateDate(date)
+
                     else -> {
                         val discipline = selectedDiscipline ?: return@setOnClickListener
                         lifecycleScope.launch {
