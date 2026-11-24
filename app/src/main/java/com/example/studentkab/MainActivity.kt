@@ -24,7 +24,7 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
-
+  
     private val database by lazy { DatabaseProvider.getDatabase(applicationContext) }
 
     private lateinit var disciplinesContainer: LinearLayout
