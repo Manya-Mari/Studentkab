@@ -52,17 +52,11 @@
 
 ## Команда и роли
 
-| Участник           | Спринт 1            | Спринт 2            | Спринт 3           | Спринт 4            | Спринт 5            | Спринт 6            | Дополнение        |
-|--------------------|---------------------|---------------------|--------------------|---------------------|---------------------|---------------------|-------------------|
-| Мария Кудашова     | Product Owner (PO)  | Lead Developer (LD) | QA / DevOps        | Product Owner (PO)  | Lead Developer (LD) | QA / DevOps         | Product Owner (PO) |
-| Козлова Ева        | Lead Developer (LD) | QA / DevOps         | Product Owner (PO) | Lead Developer (LD) | QA / DevOps         | Product Owner (PO)  | Lead Developer (LD) |
-| Кочедыков Тихон    | QA / DevOps         | Product Owner (PO)  | Lead Developer (LD)| QA / DevOps         | Product Owner (PO)  | Lead Developer (LD) | QA / DevOps        |
-
-В Спринте 2 роли распределены следующим образом:
-
-- **Мария Кудашова — Lead Developer (LD):** архитектура слоя данных, сущности, DAO, RoomDatabase, интеграция CRUD.
-- **Ева Козлова — QA / DevOps:** проверка модели данных, CRUD, сохранности данных, стабильности сборки.
-- **Тихон Кочедыков — Product Owner (PO):** ревью соответствия модели данных паспорту приложения, приёмочная проверка сценариев, приоритизация следующего спринта.
+| Участник           | Спринт 1            | Спринт 2            | Спринт 3           | Спринт 4            | Спринт 5            | Спринт 6            | 
+|--------------------|---------------------|---------------------|--------------------|---------------------|---------------------|---------------------|
+| Мария Кудашова     | Product Owner (PO)  | Lead Developer (LD) | QA / DevOps        | Product Owner (PO)  | Lead Developer (LD) | QA / DevOps         | 
+| Козлова Ева        | Lead Developer (LD) | QA / DevOps         | Product Owner (PO) | Lead Developer (LD) | QA / DevOps         | Product Owner (PO)  | 
+| Кочедыков Тихон    | QA / DevOps         | Product Owner (PO)  | Lead Developer (LD)| QA / DevOps         | Product Owner (PO)  | Lead Developer (LD) |
 
 ## Технологическая основа
 
