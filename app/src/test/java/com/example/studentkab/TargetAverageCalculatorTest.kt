@@ -56,7 +56,7 @@ class TargetAverageCalculatorTest {
     @Test
     fun roundsRequiredNumberOfGradesUp() {
         assertEquals(
-            TargetAverageResult.MoreThanOneGrade(3),
+            TargetAverageResult.MoreThanOneGrade(9),
             TargetAverageCalculator.calculate(4.5, listOf(3, 3, 3))
         )
     }
