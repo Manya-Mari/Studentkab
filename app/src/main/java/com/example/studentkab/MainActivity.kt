@@ -304,45 +304,23 @@ class MainActivity : ComponentActivity() {
             .map { it.value }
 
         when (val result = TargetAverageCalculator.calculate(target, currentGrades)) {
-            is TargetAverageResult.Success -> {
+            is TargetAverageResult.OneGradeEnough -> {
                 val currentAverage = if (currentGrades.isEmpty()) 0.0 else currentGrades.average()
                 targetAverageResult.text =
                     "Дисциплина: ${discipline.name}\n" +
-                    "Сейчас: ${formatAverage(currentAverage)} (оценок: ${currentGrades.size})\n" +
-                    "Ваша цель: ${formatAverage(target)}\n\n" +
-                    "Нужная следующая оценка: ${result.requiredGrade}.\n" +
-                    "Если получите её, средний балл достигнет цели."
+                    "Текущий средний балл: ${formatAverage(currentAverage)}\n" +
+                    "Желаемый средний балл: ${formatAverage(target)}\n\n" +
+                    "Достаточно одной следующей оценки: ${result.requiredGrade}."
             }
-            is TargetAverageResult.OutOfRange -> {
-                val count = currentGrades.size
-                val currentSum = currentGrades.sum()
-                val currentAverage = if (count == 0) 0.0 else currentGrades.average()
-                val bestPossibleAverage = (currentSum + 5.0) / (count + 1)
-                val explanation = when {
-                    result.requiredGrade > 5.0 ->
-                        "Нужно получить оценку ${formatRequiredGrade(result.requiredGrade)}, но максимальная оценка — 5."
-                    else ->
-                        "Нужно получить оценку ${formatRequiredGrade(result.requiredGrade)}, но минимальная оценка — 2."
-                }
+            is TargetAverageResult.MoreThanOneGrade -> {
                 targetAverageResult.text =
-                    "ОДНОЙ ОЦЕНКОЙ ЦЕЛЬ НЕ ДОСТИЧЬ\n\n" +
-                    "Дисциплина: ${discipline.name}\n" +
-                    "Сейчас: ${formatAverage(currentAverage)} (оценок: $count)\n" +
-                    "Желаемый средний: ${formatAverage(target)}\n\n" +
-                    "$explanation\n" +
-                    "Даже если следующая оценка будет 5, средний станет ${formatAverage(bestPossibleAverage)}.\n\n" +
-                    "Что делать: снизить целевой балл или рассчитывать на несколько будущих оценок."
+                    "Одной оценки не хватит.\n\n" +
+                    "Чтобы достичь среднего балла ${formatAverage(target)}, потребуется минимум ${result.requiredCount} оценок по 5."
             }
-            is TargetAverageResult.NonInteger -> {
-                val currentAverage = if (currentGrades.isEmpty()) 0.0 else currentGrades.average()
-                val lower = kotlin.math.floor(result.requiredGrade).toInt()
-                val upper = kotlin.math.ceil(result.requiredGrade).toInt()
+            is TargetAverageResult.Impossible -> {
                 targetAverageResult.text =
-                    "ТОЧНО ПОПАСТЬ В ЦЕЛЬ ОДНОЙ ОЦЕНКОЙ НЕЛЬЗЯ\n\n" +
-                    "Сейчас: ${formatAverage(currentAverage)} (оценок: ${currentGrades.size})\n" +
-                    "Желаемый средний: ${formatAverage(target)}\n" +
-                    "Расчётная оценка: ${formatAverage(result.requiredGrade)}\n\n" +
-                    "Оценки выставляются целыми числами. Если получить $lower, средний будет ниже цели; если $upper — выше."
+                    "Одной оценки не хватит.\n\n" +
+                    "При текущих оценках достичь среднего балла 5,00 невозможно даже несколькими оценками: средний балл будет только приближаться к 5."
             }
             is TargetAverageResult.InvalidTarget -> {
                 targetAverageResult.text = "Целевой средний балл должен быть от 2 до 5."
