@@ -319,6 +319,9 @@ class MainActivity : ComponentActivity() {
             is TargetAverageResult.InvalidTarget -> {
                 targetAverageResult.text = "Целевой средний балл должен быть от 2 до 5."
             }
+            is TargetAverageResult.InvalidGrades -> {
+                targetAverageResult.text = "В сохранённых оценках обнаружены некорректные значения. Проверьте данные дисциплины."
+            }
         }
     }
 
