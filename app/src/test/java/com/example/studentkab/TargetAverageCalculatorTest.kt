@@ -7,85 +7,75 @@ import org.junit.Test
 class TargetAverageCalculatorTest {
 
     @Test
-    fun targetBelowMinimumIsRejected() {
+    fun rejectsTargetBelowRange() {
         assertTrue(TargetAverageCalculator.calculate(1.9, listOf(4)) is TargetAverageResult.InvalidTarget)
     }
 
     @Test
-    fun targetAboveMaximumIsRejected() {
+    fun rejectsTargetAboveRange() {
         assertTrue(TargetAverageCalculator.calculate(5.1, listOf(4)) is TargetAverageResult.InvalidTarget)
     }
 
     @Test
-    fun nanTargetIsRejected() {
+    fun rejectsNanTarget() {
         assertTrue(TargetAverageCalculator.calculate(Double.NaN, listOf(4)) is TargetAverageResult.InvalidTarget)
     }
 
     @Test
-    fun firstGradeCanEqualIntegerTarget() {
+    fun emptyGradeListNeedsOneGradeEqualToTargetRoundedUp() {
         assertEquals(
-            TargetAverageResult.Success(4),
-            TargetAverageCalculator.calculate(4.0, emptyList())
+            TargetAverageResult.OneGradeEnough(5),
+            TargetAverageCalculator.calculate(4.5, emptyList())
         )
     }
 
     @Test
-    fun calculatesRequiredGradeForOneExistingGrade() {
+    fun oneGradeIsEnoughWhenRequiredGradeIsInteger() {
         assertEquals(
-            TargetAverageResult.Success(5),
+            TargetAverageResult.OneGradeEnough(5),
             TargetAverageCalculator.calculate(4.5, listOf(4))
         )
     }
 
     @Test
-    fun calculatesRequiredGradeForSeveralExistingGrades() {
+    fun roundsRequiredNextGradeUp() {
         assertEquals(
-            TargetAverageResult.Success(5),
-            TargetAverageCalculator.calculate(4.0, listOf(3, 4, 4))
+            TargetAverageResult.OneGradeEnough(5),
+            TargetAverageCalculator.calculate(4.5, listOf(5, 4))
         )
     }
 
     @Test
-    fun reportsGradeAboveMaximumAsUnreachable() {
-        val result = TargetAverageCalculator.calculate(4.5, listOf(4, 4))
-        assertTrue(result is TargetAverageResult.OutOfRange)
-        assertEquals(5.5, (result as TargetAverageResult.OutOfRange).requiredGrade, 0.000001)
-    }
-
-    @Test
-    fun reportsGradeBelowMinimumAsUnreachable() {
-        val result = TargetAverageCalculator.calculate(2.0, listOf(5, 5))
-        assertTrue(result is TargetAverageResult.OutOfRange)
-        assertEquals(-4.0, (result as TargetAverageResult.OutOfRange).requiredGrade, 0.000001)
-    }
-
-    @Test
-    fun reportsNonIntegerRequiredGrade() {
-        val result = TargetAverageCalculator.calculate(4.5, listOf(5, 4))
-        assertTrue(result is TargetAverageResult.NonInteger)
-        assertEquals(4.5, (result as TargetAverageResult.NonInteger).requiredGrade, 0.000001)
-    }
-
-    @Test
-    fun acceptsMinimumGradeBoundary() {
+    fun reportsTwoRequiredGradesWhenOneIsNotEnough() {
         assertEquals(
-            TargetAverageResult.Success(2),
-            TargetAverageCalculator.calculate(2.0, listOf(2, 2))
+            TargetAverageResult.MoreThanOneGrade(2),
+            TargetAverageCalculator.calculate(4.5, listOf(4, 4))
         )
     }
 
     @Test
-    fun acceptsMaximumGradeBoundary() {
+    fun roundsRequiredNumberOfGradesUp() {
         assertEquals(
-            TargetAverageResult.Success(5),
-            TargetAverageCalculator.calculate(5.0, listOf(5, 5))
+            TargetAverageResult.MoreThanOneGrade(3),
+            TargetAverageCalculator.calculate(4.5, listOf(3, 3, 3))
         )
     }
 
     @Test
-    fun rejectsInvalidExistingGradeValues() {
-        assertTrue(
-            TargetAverageCalculator.calculate(4.0, listOf(3, 6)) is TargetAverageResult.InvalidGrades
+    fun targetFiveWithExistingLowerGradeIsImpossible() {
+        assertTrue(TargetAverageCalculator.calculate(5.0, listOf(4, 5)) is TargetAverageResult.Impossible)
+    }
+
+    @Test
+    fun targetFiveWithNoGradesNeedsOneFive() {
+        assertEquals(
+            TargetAverageResult.OneGradeEnough(5),
+            TargetAverageCalculator.calculate(5.0, emptyList())
         )
+    }
+
+    @Test
+    fun rejectsInvalidExistingGrades() {
+        assertTrue(TargetAverageCalculator.calculate(4.0, listOf(3, 6)) is TargetAverageResult.InvalidGrades)
     }
 }
