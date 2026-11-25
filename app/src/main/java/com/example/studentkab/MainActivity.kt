@@ -43,6 +43,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var globalAverage: TextView
     private lateinit var disciplineAverage: TextView
     private lateinit var progressDynamics: TextView
+    private lateinit var targetAverageInput: EditText
+    private lateinit var targetAverageResult: TextView
 
     private var disciplines: List<Discipline> = emptyList()
     private var grades: List<Grade> = emptyList()
@@ -83,6 +85,11 @@ class MainActivity : ComponentActivity() {
         globalAverage = findViewById(R.id.globalAverage)
         disciplineAverage = findViewById(R.id.disciplineAverage)
         progressDynamics = findViewById(R.id.progressDynamics)
+        targetAverageInput = findViewById(R.id.targetAverageInput)
+        targetAverageResult = findViewById(R.id.targetAverageResult)
+        findViewById<Button>(R.id.calculateTargetAverageButton).setOnClickListener {
+            calculateTargetAverage()
+        }
 
         val workTypeAdapter = ArrayAdapter(
             this,
@@ -150,6 +157,23 @@ class MainActivity : ComponentActivity() {
             card.findViewById<TextView>(R.id.disciplineName).text = discipline.name
             card.findViewById<TextView>(R.id.teacherName).text =
                 discipline.teacherName?.takeIf { it.isNotBlank() } ?: "Преподаватель не указан"
+
+            val disciplineGrades = allGrades.filter { it.disciplineId == discipline.id }
+            val averageLabel = card.findViewById<TextView>(R.id.disciplineAverageValue)
+            if (disciplineGrades.isEmpty()) {
+                averageLabel.text = "Средний балл: пока нет оценок"
+                averageLabel.setTextColor(getColor(R.color.text_secondary))
+            } else {
+                val average = disciplineGrades.map { it.value }.average()
+                averageLabel.text = if (average < LOW_AVERAGE_THRESHOLD) {
+                    "Низкий средний балл: ${formatAverage(average)}"
+                } else {
+                    "Средний балл: ${formatAverage(average)}"
+                }
+                averageLabel.setTextColor(
+                    getColor(if (average < LOW_AVERAGE_THRESHOLD) R.color.action_delete else R.color.text_primary)
+                )
+            }
 
             // НОВЫЕ НАЗВАНИЯ РЕСУРСОВ
             card.setBackgroundResource(
@@ -256,6 +280,45 @@ class MainActivity : ComponentActivity() {
             card.findViewById<Button>(R.id.editGradeButton).setOnClickListener { showGradeDialog(grade) }
             card.findViewById<Button>(R.id.deleteGradeButton).setOnClickListener { confirmDeleteGrade(grade) }
             gradesContainer.addView(card)
+        }
+    }
+
+
+    private fun calculateTargetAverage() {
+        val targetText = targetAverageInput.text.toString().trim().replace(',', '.')
+        val target = targetText.toDoubleOrNull()
+        if (target == null || !target.isFinite() || target !in 2.0..5.0) {
+            targetAverageInput.error = "Введите целевой средний балл от 2 до 5"
+            targetAverageResult.text = "Укажите корректное целевое значение."
+            return
+        }
+
+        val discipline = selectedDiscipline
+        if (discipline == null) {
+            targetAverageResult.text = "Сначала выберите дисциплину."
+            return
+        }
+
+        val currentGrades = allGrades
+            .filter { it.disciplineId == discipline.id }
+            .map { it.value }
+
+        when (val result = TargetAverageCalculator.calculate(target, currentGrades)) {
+            is TargetAverageResult.Success -> {
+                targetAverageResult.text =
+                    "По дисциплине «${discipline.name}» следующая оценка: ${result.requiredGrade}. Целевой средний балл будет достигнут."
+            }
+            is TargetAverageResult.OutOfRange -> {
+                targetAverageResult.text =
+                    "Цель недостижима одной следующей оценкой. Требуется ${formatAverage(result.requiredGrade)}, допустимый диапазон оценок — от 2 до 5."
+            }
+            is TargetAverageResult.NonInteger -> {
+                targetAverageResult.text =
+                    "Для точного достижения цели требуется ${formatAverage(result.requiredGrade)}, но оценка должна быть целым числом от 2 до 5. Одной оценкой точно достичь цели нельзя."
+            }
+            is TargetAverageResult.InvalidTarget -> {
+                targetAverageResult.text = "Целевой средний балл должен быть от 2 до 5."
+            }
         }
     }
 
@@ -449,6 +512,10 @@ class MainActivity : ComponentActivity() {
             "контрольн" in normalizedType -> 2.0
             else -> 1.0
         }
+    }
+
+    companion object {
+        private const val LOW_AVERAGE_THRESHOLD = 3.5
     }
 
     private fun formatAverage(value: Double): String =
