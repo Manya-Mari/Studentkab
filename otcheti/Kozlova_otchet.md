@@ -46,11 +46,32 @@
 ---
 
 ## 5. Структура проекта и распределение задач
-app/
-├── data/ (Room: Entity, DAO, Database)
-├── ui/ (экраны, навигация)
-├── domain/ (правила расчёта среднего)
-└── util/ (валидация, форматирование)
+
+Studentkab/
+│
+├── app/
+│   │
+│   ├── src/
+│   ├── data/
+│   │   │   ├── res/
+│   │   │   │   ├── layout/
+│   │   │   │   ├── drawable/
+│   │   │   │   ├── values/
+│   │   │   │   │   ├── colors.xml
+│   │   │   │   │   ├── strings.xml
+│   │   │   │   │   └── themes.xml
+│   │   │   │   └── navigation/
+│   │   │   │       └── nav_graph.xml
+│   │   │   │
+│   │   │   └── AndroidManifest.xml
+│   │   │
+│   │   └── test/
+│   │       └── AverageCalculatorTest.kt
+│   │
+│   └── build.gradle.kts
+│
+└── build.gradle.kts
+
 
 text
 
