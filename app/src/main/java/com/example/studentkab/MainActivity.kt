@@ -320,9 +320,9 @@ class MainActivity : ComponentActivity() {
                 val bestPossibleAverage = (currentSum + 5.0) / (count + 1)
                 val explanation = when {
                     result.requiredGrade > 5.0 ->
-                        "Нужно получить ${formatAverage(result.requiredGrade)}, но максимальная оценка — 5."
+                        "Нужно получить оценку ${formatRequiredGrade(result.requiredGrade)}, но максимальная оценка — 5."
                     else ->
-                        "Нужно получить ${formatAverage(result.requiredGrade)}, но минимальная оценка — 2."
+                        "Нужно получить оценку ${formatRequiredGrade(result.requiredGrade)}, но минимальная оценка — 2."
                 }
                 targetAverageResult.text =
                     "ОДНОЙ ОЦЕНКОЙ ЦЕЛЬ НЕ ДОСТИЧЬ\n\n" +
@@ -548,6 +548,13 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val LOW_AVERAGE_THRESHOLD = 3.5
     }
+
+    private fun formatRequiredGrade(value: Double): String =
+        if (kotlin.math.abs(value - kotlin.math.round(value)) < 1e-9) {
+            kotlin.math.round(value).toInt().toString()
+        } else {
+            formatAverage(value)
+        }
 
     private fun formatAverage(value: Double): String =
         String.format(Locale.forLanguageTag("ru-RU"), "%.2f", value)
