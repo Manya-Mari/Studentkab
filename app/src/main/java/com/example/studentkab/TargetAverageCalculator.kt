@@ -1,8 +1,9 @@
 package com.example.studentkab
 
 /**
- * Расчёт оценки, необходимой для достижения целевого среднего балла
- * после получения одной следующей оценки.
+ * Определяет, можно ли достичь целевого среднего одной следующей оценкой.
+ * Если одной оценки недостаточно, рассчитывает минимальное число будущих
+ * оценок при условии, что каждая из них будет равна 5.
  */
 object TargetAverageCalculator {
 
@@ -14,24 +15,33 @@ object TargetAverageCalculator {
             return TargetAverageResult.InvalidGrades
         }
 
-        val required = targetAverage * (grades.size + 1) - grades.sum()
-        if (required < 2.0 || required > 5.0) {
-            return TargetAverageResult.OutOfRange(required)
+        val count = grades.size
+        val sum = grades.sum()
+        val requiredNextGrade = targetAverage * (count + 1) - sum
+
+        if (requiredNextGrade <= 5.0) {
+            val roundedUpGrade = kotlin.math.ceil(requiredNextGrade).toInt().coerceAtLeast(2)
+            return TargetAverageResult.OneGradeEnough(roundedUpGrade)
         }
 
-        val nearestInteger = kotlin.math.round(required).toInt()
-        if (kotlin.math.abs(required - nearestInteger) > 1e-9) {
-            return TargetAverageResult.NonInteger(required)
+        // При целевом среднем 5 и уже имеющихся оценках ниже 5
+        // достичь ровно 5 конечным количеством оценок невозможно.
+        if (targetAverage == 5.0) {
+            return TargetAverageResult.Impossible
         }
 
-        return TargetAverageResult.Success(nearestInteger)
+        // Минимальное k, при котором (sum + 5*k) / (count + k) >= target.
+        val needed = (targetAverage * count - sum) / (5.0 - targetAverage)
+        val roundedUpCount = kotlin.math.ceil(needed - 1e-10).toInt().coerceAtLeast(2)
+
+        return TargetAverageResult.MoreThanOneGrade(roundedUpCount)
     }
 }
 
 sealed class TargetAverageResult {
-    data class Success(val requiredGrade: Int) : TargetAverageResult()
-    data class OutOfRange(val requiredGrade: Double) : TargetAverageResult()
-    data class NonInteger(val requiredGrade: Double) : TargetAverageResult()
+    data class OneGradeEnough(val requiredGrade: Int) : TargetAverageResult()
+    data class MoreThanOneGrade(val requiredCount: Int) : TargetAverageResult()
+    object Impossible : TargetAverageResult()
     object InvalidTarget : TargetAverageResult()
     object InvalidGrades : TargetAverageResult()
 }
