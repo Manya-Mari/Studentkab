@@ -44,14 +44,22 @@ class LoginActivity : ComponentActivity() {
         val loginButton  = findViewById<Button>(R.id.loginButton)
         val errorView    = findViewById<TextView>(R.id.loginError)
 
-        // Инициализируем тестовые данные при первом запуске
+        // Не разрешаем вход, пока база данных не подготовлена.
+        loginButton.isEnabled = false
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                DatabaseProvider.insertTestDataIfNeeded(applicationContext, db)
+            try {
+                withContext(Dispatchers.IO) {
+                    DatabaseProvider.insertTestDataIfNeeded(applicationContext, db)
+                }
+                loginButton.isEnabled = true
+            } catch (error: Exception) {
+                errorView.text = "Не удалось подготовить базу данных. Перезапустите приложение."
+                errorView.visibility = View.VISIBLE
             }
         }
 
         loginButton.setOnClickListener {
+            if (!loginButton.isEnabled) return@setOnClickListener
             val login    = loginInput.text.toString().trim()
             val password = passwordInput.text.toString()
 
@@ -68,23 +76,30 @@ class LoginActivity : ComponentActivity() {
             loginButton.isEnabled = false
             loginButton.text = "Вход..."
 
+            loginButton.isEnabled = false
+            loginButton.text = "Проверка..."
             lifecycleScope.launch {
-                val student = withContext(Dispatchers.IO) {
-                    db.studentDao().findByCredentials(login, password)
-                }
-                loginButton.isEnabled = true
-                loginButton.text = "Войти"
-
-                if (student == null) {
-                    errorView.text = "Неверный логин или пароль"
-                    errorView.visibility = View.VISIBLE
-                } else {
-                    val intent = Intent(this@LoginActivity, MainActivity::class.java).apply {
-                        putExtra(MainActivity.EXTRA_STUDENT_ID,   student.id)
-                        putExtra(MainActivity.EXTRA_STUDENT_NAME, student.name)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                try {
+                    val student = withContext(Dispatchers.IO) {
+                        db.studentDao().findByCredentials(login, password)
                     }
-                    startActivity(intent)
+                    if (student == null) {
+                        errorView.text = "Неверный логин или пароль. Проверьте раскладку и данные."
+                        errorView.visibility = View.VISIBLE
+                    } else {
+                        val intent = Intent(this@LoginActivity, MainActivity::class.java).apply {
+                            putExtra(MainActivity.EXTRA_STUDENT_ID, student.id)
+                            putExtra(MainActivity.EXTRA_STUDENT_NAME, student.name)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        }
+                        startActivity(intent)
+                    }
+                } catch (error: Exception) {
+                    errorView.text = "Не удалось выполнить вход. Попробуйте ещё раз."
+                    errorView.visibility = View.VISIBLE
+                } finally {
+                    loginButton.isEnabled = true
+                    loginButton.text = "Войти"
                 }
             }
         }
