@@ -12,12 +12,24 @@ import androidx.room.PrimaryKey
  * @property name        Название дисциплины (например, «Математический анализ»).
  * @property teacherName Имя преподавателя; может отсутствовать (null).
  */
-@Entity(tableName = "disciplines")
+@Entity(
+    tableName = "disciplines",
+    foreignKeys = [
+        ForeignKey(
+            entity = Student::class,
+            parentColumns = ["id"],
+            childColumns = ["studentId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["studentId"])]
+)
 data class Discipline(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val name: String,
-    val teacherName: String? = null
+    val teacherName: String? = null,
+    val studentId: Long
 )
 
 /**

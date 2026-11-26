@@ -32,6 +32,14 @@ interface DisciplineDao {
     suspend fun getAll(): List<Discipline>
 
     /**
+     * Возвращает дисциплины конкретного студента, отсортированные по имени.
+     *
+     * @param studentId Идентификатор студента.
+     */
+    @Query("SELECT * FROM disciplines WHERE studentId = :studentId ORDER BY name")
+    suspend fun getByStudent(studentId: Long): List<Discipline>
+
+    /**
      * Возвращает дисциплину по её идентификатору или `null`, если запись не найдена.
      *
      * @param id Первичный ключ дисциплины.

@@ -1,6 +1,7 @@
 package com.example.studentkab
 
 import android.app.AlertDialog
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -25,6 +26,11 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 class MainActivity : ComponentActivity() {
     private val database by lazy { DatabaseProvider.getDatabase(applicationContext) }
+
+    // ── ID и имя текущего студента (передаются из LoginActivity) ──
+    private var currentStudentId: Long = -1L
+    private var currentStudentName: String = ""
+
     private lateinit var disciplinesContainer: LinearLayout
     private lateinit var gradesContainer: LinearLayout
     private lateinit var disciplineCount: TextView
@@ -51,6 +57,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Читаем данные студента из Intent
+        currentStudentId = intent.getLongExtra(EXTRA_STUDENT_ID, -1L)
+        currentStudentName = intent.getStringExtra(EXTRA_STUDENT_NAME) ?: ""
+
+        // Если вошли без выбора студента — вернуть на экран входа
+        if (currentStudentId == -1L) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
 
         // Разрешаем контенту рисоваться под системными барами (edge-to-edge).
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -124,20 +141,27 @@ class MainActivity : ComponentActivity() {
             showDisciplineDialog(null)
         }
 
-        // Запускаем первичное заполнение базы тестовыми данными (только при первом запуске)
-        // и сразу загружаем все данные для отображения.
-        lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                DatabaseProvider.insertTestDataIfNeeded(applicationContext, database)
-            }
-            refreshData()
+        // Кнопка «Выйти из аккаунта»
+        findViewById<Button>(R.id.logoutButton).setOnClickListener {
+            // Сбрасываем selectedDiscipline и возвращаемся на экран входа
+            selectedDiscipline = null
+            val intent = Intent(this, LoginActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
         }
+
+        // Показываем имя студента в заголовке
+        findViewById<TextView>(R.id.studentNameHeader).text = currentStudentName
+
+        // Загружаем данные студента
+        lifecycleScope.launch { refreshData() }
     }
 
     // Загрузка и обновление данных
     private suspend fun refreshData() {
         val loaded = withContext(Dispatchers.IO) {
             database.disciplineDao().getAll()
+                .filter { it.studentId == currentStudentId }  // только дисциплины текущего студента
         }
         disciplines = loaded
 
@@ -146,7 +170,10 @@ class MainActivity : ComponentActivity() {
             loaded.find { it.id == selected.id }
         } ?: loaded.firstOrNull()
 
-        allGrades = withContext(Dispatchers.IO) { database.gradeDao().getAll() }
+        val disciplineIds = loaded.map { it.id }.toSet()
+        allGrades = withContext(Dispatchers.IO) {
+            database.gradeDao().getAll().filter { it.disciplineId in disciplineIds }
+        }
         grades = selectedDiscipline?.let { discipline ->
             allGrades.filter { it.disciplineId == discipline.id }
         } ?: emptyList()
@@ -162,6 +189,9 @@ class MainActivity : ComponentActivity() {
     private suspend fun refreshGrades() {
         val current = selectedDiscipline
         allGrades = withContext(Dispatchers.IO) { database.gradeDao().getAll() }
+        // Оставляем только оценки дисциплин текущего студента
+        val studentDisciplineIds = disciplines.map { it.id }.toSet()
+        allGrades = allGrades.filter { it.disciplineId in studentDisciplineIds }
         grades = if (current == null) emptyList() else allGrades.filter { it.disciplineId == current.id }
         renderDisciplines()
         renderGrades()
@@ -464,7 +494,7 @@ class MainActivity : ComponentActivity() {
             .setTitle(if (initial == null) "Новая дисциплина" else "Изменить дисциплину")
             .setView(dialogView)
             .setNegativeButton("Отмена", null)
-            .setPositiveButton("Сохранить", null)   // null — переопределяем ниже, чтобы диалог не закрывался при ошибке
+            .setPositiveButton("Сохранить", null)
             .create()
 
         dialog.setOnShowListener {
@@ -480,12 +510,15 @@ class MainActivity : ComponentActivity() {
                         lifecycleScope.launch {
                             withContext(Dispatchers.IO) {
                                 if (initial == null) {
-                                    // Создаём новую дисциплину; имя преподавателя может отсутствовать.
+                                    // Создаём новую дисциплину привязанную к текущему студенту
                                     database.disciplineDao().insert(
-                                        Discipline(name = name, teacherName = teacher.ifBlank { null })
+                                        Discipline(
+                                            name = name,
+                                            teacherName = teacher.ifBlank { null },
+                                            studentId = currentStudentId
+                                        )
                                     )
                                 } else {
-                                    // Обновляем существующую, сохраняя ID.
                                     database.disciplineDao().update(
                                         initial.copy(name = name, teacherName = teacher.ifBlank { null })
                                     )
@@ -734,5 +767,11 @@ class MainActivity : ComponentActivity() {
          * и отображается красным цветом.
          */
         private const val LOW_AVERAGE_THRESHOLD = 3.5
+
+        /** Ключ Intent: Long — id студента. */
+        const val EXTRA_STUDENT_ID = "extra_student_id"
+
+        /** Ключ Intent: String — имя студента. */
+        const val EXTRA_STUDENT_NAME = "extra_student_name"
     }
 }

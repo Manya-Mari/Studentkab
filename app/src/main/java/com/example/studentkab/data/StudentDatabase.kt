@@ -18,11 +18,14 @@ import androidx.room.RoomDatabase
  *                     историю миграций в системе контроля версий.
  */
 @Database(
-    entities = [Discipline::class, Grade::class],
-    version = 1,
+    entities = [Student::class, Discipline::class, Grade::class],
+    version = 3,
     exportSchema = false
 )
 abstract class StudentDatabase : RoomDatabase() {
+
+    /** Возвращает DAO для операций с таблицей студентов. */
+    abstract fun studentDao(): StudentDao
 
     /** Возвращает DAO для операций с таблицей дисциплин. */
     abstract fun disciplineDao(): DisciplineDao
