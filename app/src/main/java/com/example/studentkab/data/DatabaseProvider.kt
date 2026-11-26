@@ -14,7 +14,7 @@ object DatabaseProvider {
     private var INSTANCE: StudentDatabase? = null
 
     private const val PREFS_NAME = "studentkab_prefs"
-    private const val KEY_SEEDED = "seeded_v3"
+    private const val KEY_SEEDED = "seeded_v4"
 
     /** Миграция 2 → 3: добавляем login и password в таблицу students. */
     private val MIGRATION_2_3 = object : Migration(2, 3) {
@@ -89,11 +89,6 @@ object DatabaseProvider {
             .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         if (prefs.getBoolean(KEY_SEEDED, false)) return
-        if (database.studentDao().getAll().isNotEmpty()) {
-            prefs.edit().putBoolean(KEY_SEEDED, true).apply()
-            return
-        }
-
         // ── Студент 1: Алексей Петров ──────────────────────────────────────
         val student1Id = database.studentDao().insert(
             Student(name = "Алексей Петров", login = "petrov", password = "pass123")
