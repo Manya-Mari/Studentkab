@@ -86,6 +86,16 @@
             android:spinnerMode="dropdown"
             android:layout_marginBottom="14dp" />
 
+        <TextView
+            android:id="@+id/workTypeWeightHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-6dp"
+            android:layout_marginBottom="14dp"
+            android:text="Вес оценки: 1,0"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
         <!-- Комментарий -->
         <TextView
             android:layout_width="wrap_content"
