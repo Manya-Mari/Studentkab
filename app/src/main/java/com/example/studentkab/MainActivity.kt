@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
+import android.widget.AdapterView
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -550,6 +551,24 @@ class MainActivity : ComponentActivity() {
 
         workTypeInput.adapter = ArrayAdapter(this, R.layout.spinner_item, workTypes).also {
             it.setDropDownViewResource(R.layout.spinner_dropdown_item)
+        }
+
+        val weightHint = dialogView.findViewById<TextView>(R.id.workTypeWeightHint)
+        workTypeInput.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                val selectedType = workTypes[position]
+                val weight = weightForWorkType(selectedType)
+                weightHint.text = "Вес оценки во взвешенном среднем: ${String.format(Locale.forLanguageTag("ru-RU"), "%.1f", weight)}"
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                weightHint.text = "Вес оценки: не выбран"
+            }
         }
 
         val commentInput = dialogView.findViewById<EditText>(R.id.inputGradeComment)
