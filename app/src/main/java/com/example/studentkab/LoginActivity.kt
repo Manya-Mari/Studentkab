@@ -1,6 +1,7 @@
 package com.example.studentkab
 
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -23,8 +24,21 @@ import kotlinx.coroutines.withContext
  */
 class LoginActivity : ComponentActivity() {
 
+    private lateinit var prefs: SharedPreferences
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+
+        // Если студент уже входил — сразу открываем главный экран
+        val savedId = prefs.getLong(KEY_STUDENT_ID, -1L)
+        val savedName = prefs.getString(KEY_STUDENT_NAME, null)
+        if (savedId != -1L && !savedName.isNullOrEmpty()) {
+            openMain(savedId, savedName)
+            return
+        }
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_login)
 
@@ -87,12 +101,12 @@ class LoginActivity : ComponentActivity() {
                         errorView.text = "Неверный логин или пароль. Проверьте раскладку и данные."
                         errorView.visibility = View.VISIBLE
                     } else {
-                        val intent = Intent(this@LoginActivity, MainActivity::class.java).apply {
-                            putExtra(MainActivity.EXTRA_STUDENT_ID, student.id)
-                            putExtra(MainActivity.EXTRA_STUDENT_NAME, student.name)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        }
-                        startActivity(intent)
+                        // Сохраняем сессию — при следующем запуске не нужно вводить пароль
+                        prefs.edit()
+                            .putLong(KEY_STUDENT_ID, student.id)
+                            .putString(KEY_STUDENT_NAME, student.name)
+                            .apply()
+                        openMain(student.id, student.name)
                     }
                 } catch (error: Exception) {
                     errorView.text = "Не удалось выполнить вход. Попробуйте ещё раз."
@@ -103,5 +117,21 @@ class LoginActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun openMain(studentId: Long, studentName: String) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            putExtra(MainActivity.EXTRA_STUDENT_ID, studentId)
+            putExtra(MainActivity.EXTRA_STUDENT_NAME, studentName)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+    }
+
+    companion object {
+        /** Имя файла SharedPreferences для хранения сессии. */
+        const val PREFS_NAME       = "studentkab_session"
+        const val KEY_STUDENT_ID   = "student_id"
+        const val KEY_STUDENT_NAME = "student_name"
     }
 }

@@ -144,7 +144,11 @@ class MainActivity : ComponentActivity() {
 
         // Кнопка «Выйти из аккаунта»
         findViewById<Button>(R.id.logoutButton).setOnClickListener {
-            // Сбрасываем selectedDiscipline и возвращаемся на экран входа
+            // Очищаем сохранённую сессию, чтобы при следующем запуске открылся экран входа
+            getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .clear()
+                .apply()
             selectedDiscipline = null
             val intent = Intent(this, LoginActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
